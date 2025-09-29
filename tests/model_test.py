@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from implementation.model_0d import Model0D, Stimulation
+from implementation.courtemanche_0d import Courtemanche0D, Stimulation
 
 
 def prepare_model(model_class, dt, curr_dur, curr_value, t_prebeats):
@@ -76,10 +76,32 @@ def test_model_attributes():
     """
     Test that the model has the expected attributes.
     Checks for the presence of key variables and parameters in the 0D Model.
+
     """
-    model = Model0D(dt=0.01, stimulations=[])
+    model = Courtemanche0D(dt=0.01, stimulations=[])
 
     assert 'u' in model.variables, "Model should have variable 'u'"
+    assert 'nai' in model.variables, "Model should have variable 'nai'"
+    assert 'ki' in model.variables, "Model should have variable 'ki'"
+    assert 'cai' in model.variables, "Model should have variable 'cai'"
+    assert 'caup' in model.variables, "Model should have variable 'caup'"
+    assert 'carel' in model.variables, "Model should have variable 'carel'"
+    assert 'm' in model.variables, "Model should have variable 'm'"
+    assert 'h' in model.variables, "Model should have variable 'h'"
+    assert 'j' in model.variables, "Model should have variable 'j'"
+    assert 'd' in model.variables, "Model should have variable 'd'"
+    assert 'f' in model.variables, "Model should have variable 'f'"
+    assert 'oa' in model.variables, "Model should have variable 'oa'"
+    assert 'oi' in model.variables, "Model should have variable 'oi'"
+    assert 'ua' in model.variables, "Model should have variable 'ua'"
+    assert 'ui' in model.variables, "Model should have variable 'ui'"
+    assert 'xs' in model.variables, "Model should have variable 'xs'"
+    assert 'xr' in model.variables, "Model should have variable 'xr'"
+    assert 'fca' in model.variables, "Model should have variable 'fca'"
+    assert 'irel' in model.variables, "Model should have variable 'irel'"
+    assert 'vrel' in model.variables, "Model should have variable 'vrel'"
+    assert 'urel' in model.variables, "Model should have variable 'urel'"
+    assert 'wrel' in model.variables, "Model should have variable 'wrel'"
 
 
 def test_model_run():
@@ -91,12 +113,12 @@ def test_model_run():
     t_prebeats = 1000.0 # interval between preconditioning stimuli (ms or model units).
     t_calc = 1000.0     # time after the last preconditioning beat to continue recording (ms or model units).
     t_max = 3*t_prebeats + t_calc
-    model = prepare_model(Model0D, dt=0.01, curr_dur=0.5, curr_value=5.0, t_prebeats=t_prebeats)
+    model = prepare_model(Courtemanche0D, dt=0.01, curr_dur=1, curr_value=100, t_prebeats=t_prebeats)
     model.run(t_max=t_max)
     u = np.array(model.history['u'])
 
-    assert np.max(u) == pytest.approx(20.0, abs=0.1)
-    assert np.min(u) == pytest.approx(-80.0, abs=0.01)
+    assert np.max(u) > 10
+    assert np.min(u) < -80
 
-    apd = calculate_apd(u, model.dt, threshold=0.1)
-    assert 350 <= apd <= 400, f"Model is out of expected range {apd}"
+    apd = calculate_apd(u, model.dt, threshold=-70)
+    assert 200 <= apd <= 300, f"Model is out of expected range {apd}"
