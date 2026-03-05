@@ -62,28 +62,28 @@ def get_variables() -> dict[str, float]:
     Returns default initial values for state variables.
     """
     return {
-        "u": -84.5,
+        "u": -81.2,
+        "h": 0.965,
+        "d": 0.000137,
+        "xr": 0.0000329,
         "nai": 11.2,
         "ki": 139.0,
-        "cai": 0.000102,
-        "caup": 1.6,
-        "carel": 1.1,
+        "carel": 1.49,
+        "oi": 0.999,
+        "ui": 0.999,
+        "vrel": 1.0,
         "m": 0.00291,
-        "h": 0.965,
         "j": 0.978,
-        "d": 0.000137,
-        "f": 0.999837,
-        "oa": 0.000592,
-        "oi": 0.9992,
-        "ua": 0.003519,
-        "ui": 0.9987,
+        "f": 0.999,
         "xs": 0.0187,
-        "xr": 0.0000329,
+        "cai": 0.000102,
+        "caup": 1.49,
+        "oa": 0.0304,
+        "ua": 0.00496,
         "fca": 0.775,
         "irel": 0.0,
-        "vrel": 1.0,
         "urel": 0.0,
-        "wrel": 0.9,
+        "wrel": 0.999,
     }
 
 
@@ -92,52 +92,53 @@ def get_parameters() -> dict[str, float]:
     Returns default parameter values for the model.
     """
     return {
+        "R": 8.3143,
+        "T": 310.0,
+        "F": 96.4867,
+        "Cm": 100.0,
+        "Vc": 20100.0,
+        "Vj": 13668.0,
+        "Vup": 1109.52,
+        "Vrel": 96.48,
+        "ko": 5.4,
+        "nao": 140.0,
+        "cao": 1.8,
         "gna": 7.8,
-        "gnab": 0.000674,
         "gk1": 0.09,
+        "gto": 0.1652,
         "gkr": 0.0294,
         "gks": 0.129,
-        "gto": 0.1652,
         "gcal": 0.1238,
         "gcab": 0.00113,
-        "gkur_coeff": 1.0,
-        "F": 96485.0,
-        "T": 310.0,
-        "R": 8314.0,
-        "Vc": 20100.0,
-        "Vj": 20100.0 * 0.68,
-        "Vup": 20100.0 * 0.68 * 0.06 * 0.92,
-        "Vrel": 20100.0 * 0.68 * 0.06 * 0.08,
-        "ibk": 0.0,
-        "cao": 1.8,
-        "nao": 140.0,
-        "ko": 5.4,
-        "caupmax": 15.0,
-        "kup": 0.00092,
+        "gnab": 0.000674,
+        "inakmax": 0.6,
+        "inacamax": 1600.0,
+        "ipcamax": 0.275,
+        "iupmax": 0.005,
+        "kq10": 3.0,
+        "gamma": 0.35, # for I_NaCa
         "kmnai": 10.0,
         "kmko": 1.5,
         "kmnancx": 87.5,
         "kmcancx": 1.38,
         "ksatncx": 0.1,
+        "krel": 30.0,
+        "kup": 0.00092,
+        "caupmax": 15.0,
+        "cmdnmax": 0.05,
+        "trpnmax": 0.07,
+        "csqnmax": 10.0,
         "kmcmdn": 0.00238,
         "kmtrpn": 0.0005,
-        "kmcsqn": 0.8,
-        "trpnmax": 0.07,
-        "cmdnmax": 0.05,
-        "csqnmax": 10.0,
-        "inacamax": 1600.0,
-        "inakmax": 0.6,
-        "ipcamax": 0.275,
-        "krel": 30.0,
-        "iupmax": 0.005,
-        "kq10": 3.0
+        "kmcsqn": 0.8,        
+        "ibk": 0.0,
     }
 
 
 
-def calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca):   
+def calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca, Cm):
     """
-    Computes the right-hand side of the model.
+    Computes the ionic currents density (in pA/pF) for the model.
 
     Parameters
     ----------
@@ -165,9 +166,11 @@ def calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca)
         Background sodium current.
     ibca : float
         Background calcium current.
+    Cm : float
+        Cell membrane capacitance.
     """
-    return ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca
-
+    rhs =  ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca
+    return rhs / Cm
 
 def calc_gating_variable(x, x_inf, tau_x,):
     """
@@ -430,7 +433,7 @@ def calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao, R, T, F, log=math.log
     return ena, ek, eca
 
 
-def calc_ina(u, m, h, j, gna, ena):
+def calc_ina(u, m, h, j, gna, ena, Cm):
     """
     Calculates the fast sodium current.
 
@@ -448,8 +451,10 @@ def calc_ina(u, m, h, j, gna, ena):
         Maximum conductance for the fast sodium current.
     ena : float
         Equilibrium potential for sodium.
+    Cm : float
+        Cell membrane capacitance.
     """
-    ina = gna*(m**3)*h*j*(u - ena)
+    ina = Cm *  gna*(m**3)*h*j*(u - ena)
     return ina
 
 
@@ -536,7 +541,7 @@ def calc_gating_j(j, u, dt, exp=math.exp):
     return j
 
 
-def calc_ik1(u, gk1, ek, exp=math.exp):
+def calc_ik1(u, gk1, ek, Cm, exp=math.exp):
     """
     Calculates the time-independent potassium current.
 
@@ -548,14 +553,16 @@ def calc_ik1(u, gk1, ek, exp=math.exp):
         Maximum conductance for the time-independent potassium current.
     ek : float
         Equilibrium potential for potassium.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
-    ik1 = gk1*(u - ek)/(1 + exp(0.07*(u + 80)))
+    ik1 = Cm *  gk1*(u - ek)/(1 + exp(0.07*(u + 80)))
     return ik1
 
 
-def calc_ito(u, dt, kq10, oa, oi, gto, ek, exp=math.exp):
+def calc_ito(u, dt, kq10, oa, oi, gto, ek, Cm, exp=math.exp):
     """
     Calculates the transient outward potassium current.
 
@@ -575,6 +582,8 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek, exp=math.exp):
         Maximum conductance for the transient outward potassium current.
     ek : float
         Equilibrium potential for potassium.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
@@ -593,12 +602,12 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek, exp=math.exp):
     oa = calc_gating_variable_rush_larsen(oa, o_inf, tau_o, dt)
     oi = calc_gating_variable_rush_larsen(oi, oi_inf, tau_oi, dt)
 
-    ito = gto*(oa**3)*oi*(u - ek)  
+    ito = Cm *  gto*(oa**3)*oi*(u - ek)  
 
     return ito, oa, oi
 
 
-def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff, exp=math.exp):
+def calc_ikur(u, dt, kq10, ua, ui, ek, Cm, exp=math.exp):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
 
@@ -616,8 +625,8 @@ def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff, exp=math.exp):
         Gating variable ui.
     ek : float
         Equilibrium potential for potassium.
-    gkur_coeff : float
-        Scaling factor for the ultra-rapid delayed rectifier potassium current.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
@@ -636,12 +645,12 @@ def calc_ikur(u, dt, kq10, ua, ui, ek, gkur_coeff, exp=math.exp):
     ua = calc_gating_variable_rush_larsen(ua, ua_inf, tau_ua, dt)
     ui = calc_gating_variable_rush_larsen(ui, ui_inf, tau_ui, dt)
 
-    ikur = gkur_coeff*gkur*(ua**3)*ui*(u - ek)
+    ikur = Cm *  gkur*(ua**3)*ui*(u - ek)
 
     return ikur, ua, ui
 
 
-def calc_ikr(u, dt, xr, gkr, ek, exp=math.exp):
+def calc_ikr(u, dt, xr, gkr, ek, Cm, exp=math.exp):
     """
     Calculates the rapid delayed rectifier potassium current.
 
@@ -656,6 +665,8 @@ def calc_ikr(u, dt, xr, gkr, ek, exp=math.exp):
         Maximum conductance for the rapid delayed rectifier potassium current.
     ek : float
         Equilibrium potential for potassium.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
@@ -668,12 +679,12 @@ def calc_ikr(u, dt, xr, gkr, ek, exp=math.exp):
 
     xr = calc_gating_variable_rush_larsen(xr, xr_inf, tau_xr, dt)
 
-    ikr = (gkr*xr*(u - ek))/(1 + exp((u + 15)/22.4))
+    ikr = Cm * (gkr*xr*(u - ek))/(1 + exp((u + 15)/22.4))
 
     return ikr, xr
 
 
-def calc_iks(u, dt, xs, gks, ek, exp=math.exp, sqrt=math.sqrt):
+def calc_iks(u, dt, xs, gks, ek, Cm, exp=math.exp, sqrt=math.sqrt):
     """
     Calculates the slow delayed rectifier potassium current.
     """
@@ -685,12 +696,12 @@ def calc_iks(u, dt, xs, gks, ek, exp=math.exp, sqrt=math.sqrt):
 
     xs = calc_gating_variable_rush_larsen(xs, xs_inf, tau_xs, dt)
 
-    iks = gks*(xs**2)*(u - ek)
+    iks = Cm *  gks*(xs**2)*(u - ek)
 
     return iks, xs
 
 
-def calc_ical(u, dt, d, f, cai, gcal, fca, exp=math.exp):
+def calc_ical(u, dt, d, f, cai, gcal, fca, Cm, exp=math.exp):
     """
     Calculates the L-type calcium current.
 
@@ -709,6 +720,8 @@ def calc_ical(u, dt, d, f, cai, gcal, fca, exp=math.exp):
         Maximum conductance for the L-type calcium current.
     fca : float
         Gating variable fca.
+    Cm : float
+        Cell membrane capacitance.      
     exp : callable
         Exponential function to use (default: math.exp).
     """
@@ -725,12 +738,12 @@ def calc_ical(u, dt, d, f, cai, gcal, fca, exp=math.exp):
     f   = calc_gating_variable_rush_larsen(f, f_inf, tau_f, dt)
     fca = calc_gating_variable_rush_larsen(fca, fca_inf, tau_fca, dt)
 
-    ical = gcal*d*f*fca*(u - 65) 
+    ical = Cm *  gcal*d*f*fca*(u - 65) 
 
     return ical, d, f, fca
 
 
-def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, exp=math.exp):
+def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm, exp=math.exp):
     """
     Calculates the sodium-potassium pump current.
 
@@ -756,18 +769,20 @@ def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, exp=math.exp):
         Universal gas constant.
     T : float
         Absolute temperature.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
     s = (1/7.0)*(exp(nao/67.3) - 1)
     fnak = 1/(1 + 0.1245*exp(-0.1*(F*u)/(R*T)) + 0.0365*s*exp(-(F*u)/(R*T)))
 
-    inak = inakmax*fnak*(1/(1 + (kmnai/nai)**1.5))*(ko/(ko + kmko))
+    inak = Cm *  inakmax*fnak*(1/(1 + (kmnai/nai)**1.5))*(ko/(ko + kmko))
 
     return inak
 
 
-def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, exp=math.exp):
+def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, Cm, exp=math.exp):
     """
     Calculates the sodium-calcium exchanger current.
 
@@ -797,6 +812,8 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
         Universal gas constant.
     T : float
         Absolute temperature.
+    Cm : float
+        Cell membrane capacitance.
     exp : callable
         Exponential function to use (default: math.exp).
     """
@@ -817,12 +834,12 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
     denominator = term1 * term2 * term3
 
     # Calculate INaCa
-    inaca = numerator / denominator
+    inaca = Cm *  numerator / denominator
 
     return inaca
 
 
-def calc_ibca(gcab, eca, u):
+def calc_ibca(gcab, eca, u, Cm):
     """
     Calculates the background calcium current.
 
@@ -834,12 +851,14 @@ def calc_ibca(gcab, eca, u):
         Equilibrium potential for calcium.
     u : float
         Membrane potential.
+    Cm : float
+        Cell membrane capacitance.
     """
-    ibca = gcab*(u - eca)
+    ibca = Cm *  gcab*(u - eca)
     return ibca
 
 
-def calc_ibna(gnab, ena, u):
+def calc_ibna(gnab, ena, u, Cm):
     """
     Calculates the background sodium current.
 
@@ -851,11 +870,13 @@ def calc_ibna(gnab, ena, u):
         Equilibrium potential for sodium.
     u : float
         Membrane potential.
+    Cm : float
+        Cell membrane capacitance.
     """
-    ibna = gnab*(u - ena)
+    ibna = Cm *  gnab*(u - ena)
     return ibna
 
-def calc_ipca(ipcamax, cai):
+def calc_ipca(ipcamax, cai, Cm):
     """
     Calculates the sarcolemmal calcium pump current.
 
@@ -865,8 +886,10 @@ def calc_ipca(ipcamax, cai):
         Maximum current for the sarcolemmal calcium pump.
     cai : float
         Intracellular calcium concentration.
+    Cm : float
+        Cell membrane capacitance.
     """
-    ipca = ipcamax*cai/(cai + 0.0005)
+    ipca = Cm *  ipcamax*cai/(cai + 0.0005)
     return ipca
 
 def calc_irel(dt, urel, vrel, irel, wrel, ical, inaca, krel, carel, cai, u, F, Vrel, exp=math.exp): 

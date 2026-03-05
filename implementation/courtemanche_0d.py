@@ -88,24 +88,24 @@ class Courtemanche0D:
         self.variables["h"] = ops.calc_gating_h(self.variables["h"], self.variables["u"], self.dt)
         self.variables["j"] = ops.calc_gating_j(self.variables["j"], self.variables["u"], self.dt)
 
-        ina = ops.calc_ina(self.variables["u"], self.variables["m"], self.variables["h"], self.variables["j"], self.parameters["gna"], ena)
-        ik1 = ops.calc_ik1(self.variables["u"], self.parameters["gk1"], ek)
+        ina = ops.calc_ina(self.variables["u"], self.variables["m"], self.variables["h"], self.variables["j"], self.parameters["gna"], ena, self.parameters["Cm"])
+        ik1 = ops.calc_ik1(self.variables["u"], self.parameters["gk1"], ek, self.parameters["Cm"])
         ito, self.variables["oa"], self.variables["oi"] = ops.calc_ito(self.variables["u"], self.dt, self.parameters["kq10"], self.variables["oa"], 
-                                                                       self.variables["oi"], self.parameters["gto"], ek)
+                                                                       self.variables["oi"], self.parameters["gto"], ek, self.parameters["Cm"])
         ikur, self.variables["ua"], self.variables["ui"] = ops.calc_ikur(self.variables["u"], self.dt, self.parameters["kq10"], self.variables["ua"], 
-                                                                         self.variables["ui"], ek, self.parameters["gkur_coeff"])
-        ikr, self.variables["xr"] = ops.calc_ikr(self.variables["u"], self.dt, self.variables["xr"], self.parameters["gkr"], ek)
-        iks, self.variables["xs"] = ops.calc_iks(self.variables["u"], self.dt, self.variables["xs"], self.parameters["gks"], ek)
+                                                                         self.variables["ui"], ek, self.parameters["Cm"])
+        ikr, self.variables["xr"] = ops.calc_ikr(self.variables["u"], self.dt, self.variables["xr"], self.parameters["gkr"], ek, self.parameters["Cm"])
+        iks, self.variables["xs"] = ops.calc_iks(self.variables["u"], self.dt, self.variables["xs"], self.parameters["gks"], ek, self.parameters["Cm"])
         ical, self.variables["d"], self.variables["f"], self.variables["fca"] = ops.calc_ical(self.variables["u"], self.dt, self.variables["d"], self.variables["f"], 
-                                                                                              self.variables["cai"], self.parameters["gcal"], self.variables["fca"])
+                                                                                              self.variables["cai"], self.parameters["gcal"], self.variables["fca"], self.parameters["Cm"])
         inak = ops.calc_inak(self.parameters["inakmax"], self.variables["nai"], self.parameters["nao"], self.parameters["ko"], self.parameters["kmnai"], 
-                             self.parameters["kmko"], self.parameters["F"], self.variables["u"], self.parameters["R"], self.parameters["T"])
+                             self.parameters["kmko"], self.parameters["F"], self.variables["u"], self.parameters["R"], self.parameters["T"], self.parameters["Cm"])
         inaca = ops.calc_inaca(self.parameters["inacamax"], self.variables["nai"], self.parameters["nao"], self.variables["cai"], self.parameters["cao"], 
                                self.parameters["kmnancx"], self.parameters["kmcancx"], self.parameters["ksatncx"], self.parameters["F"], self.variables["u"], 
-                               self.parameters["R"], self.parameters["T"])
-        ibca = ops.calc_ibca(self.parameters["gcab"], eca, self.variables["u"])
-        ibna = ops.calc_ibna(self.parameters["gnab"], ena, self.variables["u"])
-        ipca = ops.calc_ipca(self.parameters["ipcamax"], self.variables["cai"])
+                               self.parameters["R"], self.parameters["T"], self.parameters["Cm"])
+        ibca = ops.calc_ibca(self.parameters["gcab"], eca, self.variables["u"], self.parameters["Cm"])
+        ibna = ops.calc_ibna(self.parameters["gnab"], ena, self.variables["u"], self.parameters["Cm"])
+        ipca = ops.calc_ipca(self.parameters["ipcamax"], self.variables["cai"], self.parameters["Cm"])
         self.variables["irel"], self.variables["urel"], self.variables["vrel"], self.variables["wrel"] = ops.calc_irel(self.dt, self.variables["urel"], self.variables["vrel"], self.variables["irel"], self.variables["wrel"], ical, inaca, self.parameters["krel"], self.variables["carel"], self.variables["cai"], self.variables["u"], self.parameters["F"], self.parameters["Vrel"])
         itr = ops.calc_itr(self.variables["caup"], self.variables["carel"])
         iup = ops.calc_iup(self.parameters["iupmax"], self.variables["cai"], self.parameters["kup"])
@@ -121,7 +121,7 @@ class Courtemanche0D:
 
         self.variables["carel"] += self.dt*ops.calc_dcarel(self.variables["carel"], itr, self.variables["irel"], self.parameters["csqnmax"], self.parameters["kmcsqn"])
 
-        self.variables["u"] += self.dt*(-ops.calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca) + sum(stim.stim(t=self.dt*i) for stim in self.stimulations))
+        self.variables["u"] += self.dt*(-ops.calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca, self.parameters["Cm"]) + sum(stim.stim(t=self.dt*i) for stim in self.stimulations))
 
     def run(self, t_max: float):
         """
