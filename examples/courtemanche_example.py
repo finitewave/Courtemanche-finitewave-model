@@ -11,17 +11,20 @@ import matplotlib.pyplot as plt
 from implementation.courtemanche_0d import Courtemanche0D, Stimulation
 
 
-stimulations = [Stimulation(t_start=0.1, duration=1, amplitude=100.0)]
-t_max = 300.0
+stimulations = []
+stimulations.append(Stimulation(t_start=100, duration=2, amplitude=20.0))
+
+t_max = 600  # Total simulation time in ms
 
 model = Courtemanche0D(dt=0.01, stimulations=stimulations)
 model.run(t_max=t_max)
 
 time = np.arange(0, t_max, model.dt)
 plt.plot(time, model.history['u'])
+plt.ylim(-100, 50)
 plt.xlabel('Time (s)')
 plt.ylabel('Membrane Potential (u)')
 plt.title('0D Courtemanche Simulation')
-plt.grid()
+plt.grid(which='major')
 plt.show()
 
