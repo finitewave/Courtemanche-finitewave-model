@@ -172,6 +172,13 @@ def calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca,
     rhs =  ina + ik1 + ito + ikur + ikr + iks + ical + ipca + inak + inaca + ibna + ibca
     return rhs / Cm
 
+
+def calc_where(cond, x, y):
+    if cond:
+        return x
+    return y
+
+
 def calc_gating_variable(x, x_inf, tau_x,):
     """
     Calculates the gating variable using the steady-state value and time constant.
@@ -423,6 +430,7 @@ def calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao, R, T, F, log=math.log
     log : callable
         Logarithm function to use (default: math.log).
     """
+
     ena = (R*T/F)*log(nao/nai)
 
     ek = (R*T/F)*log(ko/ki)
@@ -431,6 +439,76 @@ def calc_equilibrum_potentials(nai, nao, ki, ko, cai, cao, R, T, F, log=math.log
     
     eca = (R*T/(2*F))*log(cao/safe_cai)
     return ena, ek, eca
+
+
+def calc_ena(nai, nao, R, T, F, log=math.log):
+    """
+    Calculates the equilibrium potential for sodium.
+
+    Parameters
+    ----------
+    nai : float
+        Intracellular sodium concentration.
+    nao : float
+        Extracellular sodium concentration.
+    R : float
+        Universal gas constant.
+    T : float
+        Absolute temperature.
+    F : float
+        Faraday's constant.
+    log : callable
+        Logarithm function to use (default: math.log).
+    """
+    ena = (R*T/F)*log(nao/nai)
+    return ena
+
+
+def calc_ek(ki, ko, R, T, F, log=math.log):
+    """
+    Calculates the equilibrium potential for potassium.
+
+    Parameters
+    ----------
+    ki : float
+        Intracellular potassium concentration.
+    ko : float
+        Extracellular potassium concentration.
+    R : float
+        Universal gas constant.
+    T : float
+        Absolute temperature.
+    F : float
+        Faraday's constant.
+    log : callable
+        Logarithm function to use (default: math.log).
+    """
+    ek = (R*T/F)*log(ko/ki)
+    return ek
+
+
+def calc_eca(cai, cao, R, T, F, log=math.log):
+    """
+    Calculates the equilibrium potential for calcium.
+
+    Parameters
+    ----------
+    cai : float
+        Intracellular calcium concentration.
+    cao : float
+        Extracellular calcium concentration.
+    R : float
+        Universal gas constant.
+    T : float
+        Absolute temperature.
+    F : float
+        Faraday's constant.
+    log : callable
+        Logarithm function to use (default: math.log).
+    """
+    # safe_cai = max(cai, 1e-7)
+    eca = (R*T/(2*F))*log(cao/cai)
+    return eca
 
 
 def calc_ina(u, m, h, j, gna, ena, Cm):
@@ -454,91 +532,155 @@ def calc_ina(u, m, h, j, gna, ena, Cm):
     Cm : float
         Cell membrane capacitance.
     """
-    ina = Cm *  gna*(m**3)*h*j*(u - ena)
+
+    ina = Cm * gna*(m**3)*h*j*(u - ena)
     return ina
 
 
-def calc_gating_m(m, u, dt, exp=math.exp):
+def calc_am(u, exp=math.exp, where=calc_where):
     """
-    Calculates the gating variable m for the fast sodium current.
+    Calculates the alpha rate for the gating variable m.
 
     Parameters
     ----------
-    m : float
-        Current value of the gating variable m.
     u : float
         Membrane potential.
-    dt : float
-        Time step (ms).
+    exp : callable
+        Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
+    """
+
+    am = where(u == -47.13, 3.2, 0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13))))
+    return am
+
+
+def calc_bm(u, exp=math.exp):
+    """
+    Calculates the beta rate for the gating variable m.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
     exp : callable
         Exponential function to use (default: math.exp).
     """
-    am = 0
-    if u == -47.13:
-        am = 3.2
-    else:
-        am = 0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13)))
 
     bm = 0.08*exp(-u/11)
-    m_inf = am/(am + bm)
-    tau_m = 1/(am + bm)
-    m = calc_gating_variable_rush_larsen(m, m_inf, tau_m, dt)
+    return bm
 
-    return m
-
-
-def calc_gating_h(h, u, dt, exp=math.exp):
+def calc_tau(a, b):
     """
-    Calculates the gating variable h for the fast sodium current.
+    Calculates the time constant for the gating variable.
 
     Parameters
     ----------
-    h : float
-        Current value of the gating variable h.
-    u : float
-        Membrane potential.
-    dt : float
-        Time step (ms).
+    a : float
+        Alpha rate for the gating variable.
+    b : float
+        Beta rate for the gating variable.
     exp : callable
         Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
     """
-    ah = 0.135*exp(-(80 + u)/6.8)
-    bh = 3.56*exp(0.079*u) + 310000*exp(0.35*u)
-    if u >= -40:
-        ah = 0    
-        bh = 1/(0.13*(1 + exp(-(u + 10.66)/11.1)))
-    
-    h_inf = ah/(ah + bh)
-    tau_h = 1/(ah + bh)
-    h = calc_gating_variable_rush_larsen(h, h_inf, tau_h, dt)
-    return h
+
+    tau = 1/(a + b)
+    return tau
 
 
-def calc_gating_j(j, u, dt, exp=math.exp):
+def calc_inf(a, b):
     """
-    Calculates the gating variable j for the fast sodium current.
+    Calculates the steady-state value for the gating variable.
 
     Parameters
     ----------
-    j : float
-        Current value of the gating variable j.
-    u : float
-        Membrane potential.
-    dt : float
-        Time step (ms).
+    a : float
+        Alpha rate for the gating variable.
+    b : float
+        Beta rate for the gating variable.
     exp : callable
         Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
     """
-    
-    aj = (-127140*exp(0.2444*u) - 0.00003474*exp(-0.04391*u))*(u + 37.78)/(1 + exp(0.311*(u + 79.23)))
-    bj = 0.1212*exp(-0.01052*u)/(1 + exp(-0.1378*(u + 40.14)))
-    if u >= -40:
-        aj = 0
-        bj = 0.3*exp(-0.0000002535*u)/(1 + exp(-0.1*(u + 32)))
-    j_inf = aj/(aj + bj)
-    tau_j = 1/(aj + bj)
-    j = calc_gating_variable_rush_larsen(j, j_inf, tau_j, dt)
-    return j
+
+    m_inf = a/(a + b)
+    return m_inf
+
+
+def calc_ah(u, exp=math.exp, where=calc_where):
+    """
+    Calculates the alpha rate for the gating variable h.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
+    """
+
+    ah = where(u >= -40, 0, 0.135*exp(-(80 + u)/6.8))
+    return ah
+
+
+def calc_bh(u, exp=math.exp, where=calc_where):
+    """
+    Calculates the beta rate for the gating variable h.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
+    """
+
+    bh = where(u >= -40, 1/(0.13*(1 + exp(-(u + 10.66)/11.1))), 3.56*exp(0.079*u) + 310000*exp(0.35*u)) 
+    return bh
+
+
+def calc_aj(u, exp=math.exp, where=calc_where):
+    """
+    Calculates the alpha rate for the gating variable j.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
+    """
+
+    aj = where(u >= -40, 0, 
+               (-127140*exp(0.2444*u) - 0.00003474*exp(-0.04391*u))*(u + 37.78)/(1 + exp(0.311*(u + 79.23))))
+    return aj
+
+
+def calc_bj(u, exp=math.exp, where=calc_where):
+    """
+    Calculates the beta rate for the gating variable j.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    where : callable
+        Function to handle special cases (default: calc_where).
+    """
+
+    bj = where(u >= -40, 0.3*exp(-0.0000002535*u)/(1 + exp(-0.1*(u + 32))), 0.1212*exp(-0.01052*u)/(1 + exp(-0.1378*(u + 40.14))))
+    return bj
 
 
 def calc_ik1(u, gk1, ek, Cm, exp=math.exp):
@@ -558,11 +700,86 @@ def calc_ik1(u, gk1, ek, Cm, exp=math.exp):
     exp : callable
         Exponential function to use (default: math.exp).
     """
+
     ik1 = Cm *  gk1*(u - ek)/(1 + exp(0.07*(u + 80)))
     return ik1
 
 
-def calc_ito(u, dt, kq10, oa, oi, gto, ek, Cm, exp=math.exp):
+def calc_tau_oa(u, kq10, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable oa.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    kq10 : float
+        Temperature adjustment factor.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    ao = 0.65/(exp(-(u + 10)/8.5) + exp(-(u - 30)/59.0))
+    bo = 0.65/(2.5 + exp((u + 82)/17.0))
+
+    tau_oa = 1/(kq10*(ao + bo))
+    return tau_oa
+
+
+def calc_oa_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable oa.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    oa_inf = 1/(1 + exp(-(u + 20.47)/17.54))
+    return oa_inf
+
+
+def calc_tau_oi(u, kq10, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable oi.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    kq10 : float
+        Temperature adjustment factor.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    aoi = 1/(18.53 + exp((u + 113.7)/10.95))
+    boi = 1/(35.56 + exp(-(u + 1.26)/7.44))
+
+    tau_oi = 1/(kq10*(aoi + boi))
+    return tau_oi
+
+
+def calc_oi_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable oi.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    oi_inf = 1/(1 + exp((u + 43.1)/5.3))
+    return oi_inf
+
+
+def calc_ito(u, oa, oi, gto, ek, Cm):
     """
     Calculates the transient outward potassium current.
 
@@ -570,10 +787,6 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek, Cm, exp=math.exp):
     ----------
     u : float
         Membrane potential.
-    dt : float
-        Time step (ms).
-    kq10 : float
-        Temperature adjustment factor.
     oa : float
         Gating variable oa.
     oi : float
@@ -584,30 +797,88 @@ def calc_ito(u, dt, kq10, oa, oi, gto, ek, Cm, exp=math.exp):
         Equilibrium potential for potassium.
     Cm : float
         Cell membrane capacitance.
+    """
+
+    ito = Cm * gto*(oa**3)*oi*(u - ek)  
+
+    return ito
+
+
+def calc_tau_ua(u, kq10, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable ua.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    kq10 : float
+        Temperature adjustment factor.
     exp : callable
         Exponential function to use (default: math.exp).
     """
-    ao = 0.65/(exp(-(u + 10)/8.5) + exp(-(u - 30)/59.0))
-    bo = 0.65/(2.5 + exp((u + 82)/17.0))
 
-    tau_o = 1/(kq10*(ao + bo))
-    o_inf = 1/(1 + exp(-(u + 20.47)/17.54))
+    aua = 0.65/(exp(-(u + 10)/8.5) + exp(-(u - 30)/59.0))
+    bua = 0.65/(2.5 + exp((u + 82)/17.0))
 
-    aoi = 1/(18.53 + exp((u + 113.7)/10.95))
-    boi = 1/(35.56 + exp(-(u + 1.26)/7.44))
-
-    tau_oi = 1/(kq10*(aoi + boi))
-    oi_inf = 1/(1 + exp((u + 43.1)/5.3))
-
-    oa = calc_gating_variable_rush_larsen(oa, o_inf, tau_o, dt)
-    oi = calc_gating_variable_rush_larsen(oi, oi_inf, tau_oi, dt)
-
-    ito = Cm *  gto*(oa**3)*oi*(u - ek)  
-
-    return ito, oa, oi
+    tau_ua = 1/(kq10*(aua + bua))
+    return tau_ua
 
 
-def calc_ikur(u, dt, kq10, ua, ui, ek, Cm, exp=math.exp):
+def calc_ua_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable ua.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    ua_inf = 1/(1 + exp(-(u + 30.3)/9.6))
+    return ua_inf
+
+
+def calc_tau_ui(u, kq10, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable ui.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    kq10 : float
+        Temperature adjustment factor.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    aui = 1/(21 + exp(-(u - 185)/28.0))
+    bui = exp((u - 158)/16.0)
+
+    tau_ui = 1/(kq10*(aui + bui))
+    return tau_ui
+
+
+def calc_ui_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable ui.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    ui_inf = 1/(1 + exp((u - 99.45)/27.48))
+    return ui_inf
+
+
+def calc_ikur(u, ua, ui, ek, Cm, exp=math.exp):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
 
@@ -615,10 +886,6 @@ def calc_ikur(u, dt, kq10, ua, ui, ek, Cm, exp=math.exp):
     ----------
     u : float
         Membrane potential.
-    dt : float
-        Time step (ms).
-    kq10 : float
-        Temperature adjustment factor.
     ua : float
         Gating variable ua.
     ui : float
@@ -630,27 +897,49 @@ def calc_ikur(u, dt, kq10, ua, ui, ek, Cm, exp=math.exp):
     exp : callable
         Exponential function to use (default: math.exp).
     """
+
     gkur = 0.005 + 0.05/(1 + exp(-(u - 15)/13.0))
 
-    aua = 0.65/(exp(-(u + 10)/8.5) + exp(-(u - 30)/59.0))
-    bua = 0.65/(2.5 + exp((u + 82)/17.0))
-    tau_ua = 1/(kq10*(aua + bua))
-    ua_inf = 1/(1 + exp(-(u + 30.3)/9.6))
-    aui = 1/(21 + exp(-(u - 185)/28.0))
-    bui = exp((u - 158)/16.0)
+    ikur = Cm * gkur*(ua**3)*ui*(u - ek)
 
-    tau_ui = 1/(kq10*(aui + bui))
-    ui_inf = 1/(1 + exp((u - 99.45)/27.48))
+    return ikur
 
-    ua = calc_gating_variable_rush_larsen(ua, ua_inf, tau_ua, dt)
-    ui = calc_gating_variable_rush_larsen(ui, ui_inf, tau_ui, dt)
+def calc_tau_xr(u, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable xr.
 
-    ikur = Cm *  gkur*(ua**3)*ui*(u - ek)
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
 
-    return ikur, ua, ui
+    axr = 0.0003*(u + 14.1)/(1 - exp(-(u + 14.1)/5))
+    bxr = 0.000073898*(u - 3.3328)/(exp((u - 3.3328)/5.1237) - 1)
+
+    tau_xr = 1/(axr + bxr)
+    return tau_xr
 
 
-def calc_ikr(u, dt, xr, gkr, ek, Cm, exp=math.exp):
+def calc_xr_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable xr.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    xr_inf = 1/(1 + exp(-(u + 14.1)/6.5))
+    return xr_inf
+
+
+def calc_ikr(u, xr, gkr, ek, Cm, exp=math.exp):
     """
     Calculates the rapid delayed rectifier potassium current.
 
@@ -658,7 +947,6 @@ def calc_ikr(u, dt, xr, gkr, ek, Cm, exp=math.exp):
     ----------
     u : float
         Membrane potential.
-    dt : float
     xr : float
         Gating variable xr.
     gkr : float
@@ -671,37 +959,154 @@ def calc_ikr(u, dt, xr, gkr, ek, Cm, exp=math.exp):
         Exponential function to use (default: math.exp).
     """
     gkr = 0.0294 # * np.sqrt(ko / 5.4)
-    axr = 0.0003*(u + 14.1)/(1 - exp(-(u + 14.1)/5))
-    bxr = 0.000073898*(u - 3.3328)/(exp((u - 3.3328)/5.1237) - 1)
-
-    tau_xr = 1/(axr + bxr)
-    xr_inf = 1/(1 + exp(-(u + 14.1)/6.5))
-
-    xr = calc_gating_variable_rush_larsen(xr, xr_inf, tau_xr, dt)
 
     ikr = Cm * (gkr*xr*(u - ek))/(1 + exp((u + 15)/22.4))
 
-    return ikr, xr
+    return ikr
 
 
-def calc_iks(u, dt, xs, gks, ek, Cm, exp=math.exp, sqrt=math.sqrt):
+def calc_tau_xs(u, exp=math.exp):
     """
-    Calculates the slow delayed rectifier potassium current.
+    Calculates the time constant for the gating variable xs.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
     """
+
     axs = 0.00004*(u - 19.9)/(1 - exp(-(u - 19.9)/17))
     bxs = 0.000035*(u - 19.9)/(exp((u - 19.9)/9) - 1)
 
     tau_xs = 1/(2*(axs + bxs))
+    return tau_xs
+
+
+def calc_xs_inf(u, exp=math.exp, sqrt=math.sqrt):
+    """
+    Calculates the steady-state value for the gating variable xs.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
     xs_inf = 1/sqrt(1 + exp(-(u - 19.9)/12.7))
-
-    xs = calc_gating_variable_rush_larsen(xs, xs_inf, tau_xs, dt)
-
-    iks = Cm *  gks*(xs**2)*(u - ek)
-
-    return iks, xs
+    return xs_inf
 
 
-def calc_ical(u, dt, d, f, cai, gcal, fca, Cm, exp=math.exp):
+def calc_iks(u, xs, gks, ek, Cm):
+    """
+    Calculates the slow delayed rectifier potassium current.
+    """
+    
+    iks = Cm * gks*(xs**2)*(u - ek)
+
+    return iks
+
+
+def calc_tau_d(u, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable d.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    tau_d = (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24)))
+    return tau_d
+
+
+def calc_d_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable d.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    d_inf = 1/(1 + exp(-(u + 10)/8.0))
+    return d_inf
+
+
+def calc_tau_f(u, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable f.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    tau_f = 9/(0.0197*exp(-(0.0337**2)*((u + 10)**2)) + 0.02)
+    return tau_f
+
+
+def calc_f_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable f.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    f_inf = 1/(1 + exp((u + 28)/6.9))
+    return f_inf
+
+
+def calc_tau_fca():
+    """
+    Calculates the time constant for the gating variable fca.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    tau_fca = 2
+    return tau_fca
+
+
+def calc_fca_inf(cai):
+    """
+    Calculates the steady-state value for the gating variable fca.
+
+    Parameters
+    ----------
+    cai : float
+        Intracellular calcium concentration.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    fca_inf = 1/(1 + cai/0.00035)
+    return fca_inf
+
+
+def calc_ical(u, d, f, gcal, fca, Cm):
     """
     Calculates the L-type calcium current.
 
@@ -709,38 +1114,21 @@ def calc_ical(u, dt, d, f, cai, gcal, fca, Cm, exp=math.exp):
     ----------
     u : float
         Membrane potential.
-    dt : float
     d : float
         Gating variable d.
     f : float
         Gating variable f.
-    cai : float
-        Intracellular calcium concentration.
     gcal : float
         Maximum conductance for the L-type calcium current.
     fca : float
         Gating variable fca.
     Cm : float
         Cell membrane capacitance.      
-    exp : callable
-        Exponential function to use (default: math.exp).
     """
-    tau_d = (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24)))
-    d_inf = 1/(1 + exp(-(u + 10)/8.0))
 
-    tau_f = 9/(0.0197*exp(-(0.0337**2)*((u + 10)**2)) + 0.02)
-    f_inf = 1/(1 + exp((u + 28)/6.9))
+    ical = Cm * gcal*d*f*fca*(u - 65) 
 
-    tau_fca = 2
-    fca_inf = 1/(1 + cai/0.00035)
-
-    d   = calc_gating_variable_rush_larsen(d, d_inf, tau_d, dt)
-    f   = calc_gating_variable_rush_larsen(f, f_inf, tau_f, dt)
-    fca = calc_gating_variable_rush_larsen(fca, fca_inf, tau_fca, dt)
-
-    ical = Cm *  gcal*d*f*fca*(u - 65) 
-
-    return ical, d, f, fca
+    return ical
 
 
 def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm, exp=math.exp):
@@ -774,6 +1162,7 @@ def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm, exp=math.exp):
     exp : callable
         Exponential function to use (default: math.exp).
     """
+
     s = (1/7.0)*(exp(nao/67.3) - 1)
     fnak = 1/(1 + 0.1245*exp(-0.1*(F*u)/(R*T)) + 0.0365*s*exp(-(F*u)/(R*T)))
 
@@ -817,6 +1206,7 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
     exp : callable
         Exponential function to use (default: math.exp).
     """
+
     gamma = 0.35
 
     # Exponential terms with clamping
@@ -854,6 +1244,7 @@ def calc_ibca(gcab, eca, u, Cm):
     Cm : float
         Cell membrane capacitance.
     """
+
     ibca = Cm *  gcab*(u - eca)
     return ibca
 
@@ -873,6 +1264,7 @@ def calc_ibna(gnab, ena, u, Cm):
     Cm : float
         Cell membrane capacitance.
     """
+
     ibna = Cm *  gnab*(u - ena)
     return ibna
 
@@ -889,17 +1281,138 @@ def calc_ipca(ipcamax, cai, Cm):
     Cm : float
         Cell membrane capacitance.
     """
+
     ipca = Cm *  ipcamax*cai/(cai + 0.0005)
     return ipca
 
-def calc_irel(dt, urel, vrel, irel, wrel, ical, inaca, krel, carel, cai, u, F, Vrel, exp=math.exp): 
+
+def calc_Fn(irel, ical, inaca, F, Vrel):
+    """
+    Calculates the sarcoplasmic Ca2+ flux signal for irel.
+
+    Parameters
+    ----------
+    irel : float
+        Calcium release from the JSR.
+    ical : float
+        L-type calcium current.
+    inaca : float
+        Sodium-calcium exchanger current.
+    F : float
+        Faraday's constant.
+    Vrel : float
+        Volume of the release compartment.
+    """
+
+    Fn = 1e-12*Vrel*irel - ((5*1e-13)/F)*(0.5*ical - 0.2*inaca) 
+    return Fn
+
+
+def calc_tau_urel():
+    """
+    Calculates the time constant for the gating variable urel.
+    """
+    tau_urel = 8
+    return tau_urel
+
+
+def calc_urel_inf(Fn, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable urel.
+
+    Parameters
+    ----------
+    Fn : float
+        Function Fn used in the gating variable equations.
+    irel : float
+        Calcium release from the JSR.
+    ical : float
+        L-type calcium current.
+    inaca : float
+        Sodium-calcium exchanger current.
+    F : float
+        Faraday's constant.
+    Vrel : float
+        Volume of the release compartment.
+    """
+
+    urel_inf = 1/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
+
+    return urel_inf
+
+
+def calc_tau_vrel(Fn, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable vrel.
+
+    Parameters
+    ----------
+    Fn : float
+        Function Fn used in the gating variable equations.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    tau_vrel = 1.91 + 2.09/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
+
+    return tau_vrel
+
+
+def calc_vrel_inf(Fn, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable vrel.
+
+    Parameters
+    ----------
+    Fn : float
+        Function Fn used in the gating variable equations.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    vrel_inf = 1 - 1/(1 + exp(-(Fn - 6.835e-14)/13.67e-16))
+
+    return vrel_inf
+
+
+def calc_tau_wrel(u, exp=math.exp):
+    """
+    Calculates the time constant for the gating variable wrel.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    tau_wrel = 6 * (1 - exp(-(u - 7.9) / 5.0)) / ((1 + 0.3 * exp(-(u - 7.9) / 5.0)) * (u - 7.9))
+    return tau_wrel
+
+
+def calc_wrel_inf(u, exp=math.exp):
+    """
+    Calculates the steady-state value for the gating variable wrel.
+
+    Parameters
+    ----------
+    u : float
+        Membrane potential.
+    exp : callable
+        Exponential function to use (default: math.exp).
+    """
+
+    wrel_inf = 1 - 1/(1 + exp(-(u - 40)/17.0))
+    return wrel_inf
+
+
+def calc_irel(urel, vrel, irel, wrel, krel, carel, cai): 
     """
     Calculates the calcium release from the JSR.
 
     Parameters
     ----------
-    dt : float
-        Time step (ms).
     urel : float    
         Gating variable urel.
     vrel : float
@@ -908,44 +1421,18 @@ def calc_irel(dt, urel, vrel, irel, wrel, ical, inaca, krel, carel, cai, u, F, V
         Calcium release from the JSR.
     wrel : float
         Gating variable wrel.
-    ical : float
-        L-type calcium current.
-    inaca : float
-        Sodium-calcium exchanger current.
     krel : float
         Scaling factor for the calcium release.
     carel : float
         Calcium concentration in the release compartment.
     cai : float
         Intracellular calcium concentration.
-    u : float
-        Membrane potential.
-    F : float
-        Faraday's constant.
-    Vrel : float
-        Volume of the release compartment.
-    exp : callable
-        Exponential function to use (default: math.exp).
     """
-    tau_u = 8
-
-    Fn = 1e-12*Vrel*irel - ((5*1e-13)/F)*(0.5*ical - 0.2*inaca) 
-
-    u_inf = 1/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
-
-    tau_v = 1.91 + 2.09/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
-    v_inf = 1 - 1/(1 + exp(-(Fn - 6.835e-14)/13.67e-16))
-
-    tau_w = 6 * (1 - exp(-(u - 7.9) / 5.0)) / ((1 + 0.3 * exp(-(u - 7.9) / 5.0)) * (u - 7.9))
-    w_inf = 1 - 1/(1 + exp(-(u - 40)/17.0))
-
-    urel = calc_gating_variable_rush_larsen(urel, u_inf, tau_u, dt)
-    vrel = calc_gating_variable_rush_larsen(vrel, v_inf, tau_v, dt)
-    wrel = calc_gating_variable_rush_larsen(wrel, w_inf, tau_w, dt)
 
     irel = krel*(urel**2)*vrel*wrel*(carel - cai)
 
-    return irel, urel, vrel, wrel
+    return irel 
+
 
 def calc_itr(caup, carel):
     """
@@ -958,9 +1445,11 @@ def calc_itr(caup, carel):
     carel : float
         Calcium concentration in the release compartment.
     """
+
     tautr = 180
     itr = (caup - carel)/tautr
     return itr
+
 
 def calc_iup(iupmax, cai, kup):
     """
@@ -975,8 +1464,10 @@ def calc_iup(iupmax, cai, kup):
     kup : float
         Dissociation constant for the uptake.
     """
+
     iup = iupmax/(1 + (kup/cai))
     return iup
+
 
 def calc_iupleak(caup, caupmax, iupmax):
     """
@@ -991,5 +1482,6 @@ def calc_iupleak(caup, caupmax, iupmax):
     iupmax : float
         Maximum uptake of calcium into the NSR.
     """
+
     iupleak = (caup/caupmax)*iupmax
     return iupleak

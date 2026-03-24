@@ -46,37 +46,37 @@ python -m pytest -q
 - `caup = 1.6` - Ca²⁺ concentration in uptake compartment (mM)
 - `carel = 1.1` - Ca²⁺ concentration in release compartment (mM)
 - `m = 0.00291 ` - activation gate of fast Na⁺ current
-- `h = 0.965` - fast inactivation gate of I_Na
-- `j = 0.978` - slow inactivation gate of I_Na
-- `d = 0.000137` - activation gate of L-type Ca²⁺ current
-- `f = 0.999837` - inactivation gate of I_CaL
-- `oa = 0.000592` - activation gate of transient outward K⁺ current
-- `oi = 0.9992` - inactivation gate of I_to
-- `ua = 0.003519` - activation gate of ultra-rapid K⁺ current
-- `ui = 0.9987` - inactivation gate of I_Kur
-- `xs = 0.0187` - activation gate of slow delayed rectifier K⁺ current
-- `xr = 0.0000329` - activation gate of rapid delayed rectifier K⁺ current
-- `fca = 0.775` - Ca²⁺-dependent inactivation gate of I_CaL
+- `h = 0.965` - fast inactivation gate of ina
+- `j = 0.978` - slow inactivation gate of ina
+- `d = 0.000137` - activation gating variable for ical
+- `f = 0.999837` - voltage-dependent inactivation gating variable for ical
+- `oa = 0.000592` - activation gate for ito
+- `oi = 0.9992` - inactivation gate of ito
+- `ua = 0.003519` - activation gating variable for ikur
+- `ui = 0.9987` - inactivation gate of ikur
+- `xs = 0.0187` - activation gating variable for iks
+- `xr = 0.0000329` - activation gating variable for ikur
+- `fca = 0.775` - Ca²⁺-dependent inactivation gate of ical
 - `irel  = 0` - Ca²⁺ release current from SR
-- `vrel  = 1` - SR release flux variable (voltage-dependent)
-- `urel  = 0` - SR release gate variable
-- `wrel  = 0.9` - SR recovery variable
+- `vrel  = 1` - Ca²⁺ flux-dependent inactivation gating variable for irel
+- `urel  = 0` - activation gating variable for irel
+- `wrel  = 0.9` - voltage-dependent inactivation gating variable for irel
 
 
 ### Parameters
-- `gna = 7.8` - maximum conductance of fast sodium current (mS/cm²)
-- `gnab = 0.000674` - maximum conductance of background sodium current (mS/cm²)
-- `gk1 = 0.09` - maximum conductance of inward rectifier potassium current (mS/cm²)
-- `gkr = 0.0294` - maximum conductance of rapid delayed rectifier potassium current (mS/cm²)
-- `gks = 0.129` - maximum conductance of slow delayed rectifier potassium current (mS/cm²)
-- `gto = 0.1652` - maximum conductance of transient outward potassium current (mS/cm²)
-- `gcal = 0.1238` - maximum conductance of L-type calcium current (mS/cm²)
-- `gcab = 0.00113` - maximum conductance of background calcium current (mS/cm²)
-- `Vc = 20100` - cell volume (µL)
-- `Vj = Vc * 0.68` - junction volume (µL)
-- `Vup = Vj * 0.06 * 0.92` - uptake compartment volume (µL)
-- `Vrel = Vj * 0.06 * 0.08` - release compartment volume (µL)
-- `ibk = 0.0` - background current (µA/cm²)
+- `gna = 7.8` - maximum conductance of fast sodium current (nS/pF)
+- `gnab = 0.000674` - maximum conductance of background sodium current (nS/pF)
+- `gk1 = 0.09` - maximum conductance of inward rectifier potassium current (nS/pF)
+- `gkr = 0.0294` - maximum conductance of rapid delayed rectifier potassium current (nS/pF)
+- `gks = 0.129` - maximum conductance of slow delayed rectifier potassium current (nS/pF)
+- `gto = 0.1652` - maximum conductance of transient outward potassium current (nS/pF)
+- `gcal = 0.1238` - maximum conductance of L-type calcium current (nS/pF)
+- `gcab = 0.00113` - maximum conductance of background calcium current (nS/pF)
+- `Vc = 20100` - cell volume (μm3)
+- `Vj = Vc * 0.68` - intracellular volume (μm3)
+- `Vup = Vj * 0.06 * 0.92` - uptake compartment volume (μm3)
+- `Vrel = Vj * 0.06 * 0.08` - release compartment volume (μm3)
+- `ibk = 0.0` - background current (pA/pF)
 - `cao = 1.8` - extracellular Ca²⁺ concentration (mM)
 - `nao = 140` - extracellular Na⁺ concentration (mM)
 - `ko = 5.4` - extracellular K⁺ concentration (mM)
@@ -93,10 +93,15 @@ python -m pytest -q
 - `trpnmax = 0.07` - maximum troponin concentration (mM)
 - `cmdnmax = 0.05` - maximum calmodulin concentration (mM)
 - `csqnmax = 10.0` - maximum calsequestrin concentration (mM)
-- `inacamax = 1600` - maximum Na⁺ current (µA/cm²)
-- `inakmax = 0.6` - maximum Na⁺/K⁺ pump current (µA/cm²)
-- `ipcamax = 0.275` - maximum Ca²⁺ pump current (µA/cm²)
-- `krel = 30` - release rate constant
-- `iupmax = 0.005` - maximum uptake current (µA/cm²)
-- `kq10 = 3` - temperature sensitivity coefficient
+- `inacamax = 1600` - maximum Na⁺ current (pA/pF)
+- `inakmax = 0.6` - maximum Na⁺/K⁺ pump current (pA/pF)
+- `ipcamax = 0.275` - maximum Ca²⁺ pump current (pA/pF)
+- `krel = 30` - maximum release rate for irel
+- `iupmax = 0.005` - maximum uptake current (mM/ms)
+- `kq10 = 3` - temperature scaling factor for ikur and ito kinetics
+- `R = 8.3143` - gas constant (K−1 ⋅ mol−1)
+- `T = 310.0` - temperature (K)
+- `F = 96.4867` - Faraday constant (C/mmol)
+
+
 

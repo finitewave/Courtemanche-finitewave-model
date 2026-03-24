@@ -108,16 +108,28 @@ class Courtemanche0D:
         nai_old = self.variables["nai"]
         ki_old = self.variables["ki"]
 
-        ena, ek, eca = ops.calc_equilibrum_potentials(
-            nai_old, self.parameters["nao"],
-            ki_old, self.parameters["ko"],
-            cai_old, self.parameters["cao"],
-            self.parameters["R"], self.parameters["T"], self.parameters["F"]
-        )
 
-        m_new = ops.calc_gating_m(m_old, u_old, self.dt)
-        h_new = ops.calc_gating_h(h_old, u_old, self.dt)
-        j_new = ops.calc_gating_j(j_old, u_old, self.dt)
+        ena = ops.calc_ena(nai_old, self.parameters["nao"], self.parameters["R"], self.parameters["T"], self.parameters["F"])
+        ek = ops.calc_ek(ki_old, self.parameters["ko"], self.parameters["R"], self.parameters["T"], self.parameters["F"])
+        eca = ops.calc_eca(cai_old, self.parameters["cao"], self.parameters["R"], self.parameters["T"], self.parameters["F"])
+
+        am = ops.calc_am(u_old)
+        bm = ops.calc_bm(u_old)
+        tau_m = ops.calc_tau(am, bm)
+        m_inf = ops.calc_inf(am, bm)
+        m_new = ops.calc_gating_variable_rush_larsen(m_old, m_inf, tau_m, self.dt)
+
+        ah = ops.calc_ah(u_old)
+        bh = ops.calc_bh(u_old) 
+        tau_h = ops.calc_tau(ah, bh)
+        h_inf = ops.calc_inf(ah, bh)
+        h_new = ops.calc_gating_variable_rush_larsen(h_old, h_inf, tau_h, self.dt)
+
+        aj = ops.calc_aj(u_old)
+        bj = ops.calc_bj(u_old)
+        tau_j = ops.calc_tau(aj, bj)
+        j_inf = ops.calc_inf(aj, bj)
+        j_new = ops.calc_gating_variable_rush_larsen(j_old, j_inf, tau_j, self.dt)
 
         ina = ops.calc_ina(
             u_old, m_old, h_old, j_old,
@@ -128,31 +140,65 @@ class Courtemanche0D:
             u_old, self.parameters["gk1"], ek, self.parameters["Cm"]
         )
 
-        ito, oa_new, oi_new = ops.calc_ito(
-            u_old, self.dt, self.parameters["kq10"],
-            oa_old, oi_old,
+        tau_oa = ops.calc_tau_oa(u_old, self.parameters["kq10"])
+        oa_inf = ops.calc_oa_inf(u_old)
+        oa_new = ops.calc_gating_variable_rush_larsen(oa_old, oa_inf, tau_oa, self.dt)
+
+        tau_oi = ops.calc_tau_oi(u_old, self.parameters["kq10"])
+        oi_inf = ops.calc_oi_inf(u_old)
+        oi_new = ops.calc_gating_variable_rush_larsen(oi_old, oi_inf, tau_oi, self.dt)
+
+        ito = ops.calc_ito(
+            u_old, oa_old, oi_old,
             self.parameters["gto"], ek, self.parameters["Cm"]
         )
 
-        ikur, ua_new, ui_new = ops.calc_ikur(
-            u_old, self.dt, self.parameters["kq10"],
-            ua_old, ui_old,
+        tau_ua = ops.calc_tau_ua(u_old, self.parameters["kq10"])
+        ua_inf = ops.calc_ua_inf(u_old)
+        ua_new = ops.calc_gating_variable_rush_larsen(ua_old, ua_inf, tau_ua, self.dt)
+
+        tau_ui = ops.calc_tau_ui(u_old, self.parameters["kq10"])
+        ui_inf = ops.calc_ui_inf(u_old)
+        ui_new = ops.calc_gating_variable_rush_larsen(ui_old, ui_inf, tau_ui, self.dt)
+
+        ikur = ops.calc_ikur(
+            u_old, ua_old, ui_old,
             ek, self.parameters["Cm"]
         )
 
-        ikr, xr_new = ops.calc_ikr(
-            u_old, self.dt, xr_old,
+        tau_xr = ops.calc_tau_xr(u_old)
+        xr_inf = ops.calc_xr_inf(u_old)
+        xr_new = ops.calc_gating_variable_rush_larsen(xr_old, xr_inf, tau_xr, self.dt)
+
+        ikr = ops.calc_ikr(
+            u_old, xr_old,
             self.parameters["gkr"], ek, self.parameters["Cm"]
         )
 
-        iks, xs_new = ops.calc_iks(
-            u_old, self.dt, xs_old,
+        tau_xs = ops.calc_tau_xs(u_old)
+        xs_inf = ops.calc_xs_inf(u_old)
+        xs_new = ops.calc_gating_variable_rush_larsen(xs_old, xs_inf, tau_xs, self.dt)
+
+        iks = ops.calc_iks(
+            u_old, xs_old,
             self.parameters["gks"], ek, self.parameters["Cm"]
         )
 
-        ical, d_new, f_new, fca_new = ops.calc_ical(
-            u_old, self.dt, d_old, f_old,
-            cai_old, self.parameters["gcal"], fca_old, self.parameters["Cm"]
+        tau_d = ops.calc_tau_d(u_old)
+        d_inf = ops.calc_d_inf(u_old)
+        d_new = ops.calc_gating_variable_rush_larsen(d_old, d_inf, tau_d, self.dt)
+
+        tau_f = ops.calc_tau_f(u_old)
+        f_inf = ops.calc_f_inf(u_old)
+        f_new = ops.calc_gating_variable_rush_larsen(f_old, f_inf, tau_f, self.dt)
+
+        tau_fca = ops.calc_tau_fca()
+        fca_inf = ops.calc_fca_inf(cai_old)
+        fca_new = ops.calc_gating_variable_rush_larsen(fca_old, fca_inf, tau_fca, self.dt)
+
+        ical = ops.calc_ical(
+            u_old, d_old, f_old,
+            self.parameters["gcal"], fca_old, self.parameters["Cm"]
         )
 
         inak = ops.calc_inak(
@@ -186,12 +232,24 @@ class Courtemanche0D:
             self.parameters["ipcamax"], cai_old, self.parameters["Cm"]
         )
 
-        irel_new, urel_new, vrel_new, wrel_new = ops.calc_irel(
-            self.dt,
+        Fn = ops.calc_Fn(irel_old, ical, inaca, self.parameters["F"], self.parameters["Vrel"])
+
+        tau_urel = ops.calc_tau_urel()
+        urel_inf = ops.calc_urel_inf(Fn)
+        urel_new = ops.calc_gating_variable_rush_larsen(urel_old, urel_inf, tau_urel, self.dt)
+
+        tau_vrel = ops.calc_tau_vrel(Fn)
+        vrel_inf = ops.calc_vrel_inf(Fn)
+        vrel_new = ops.calc_gating_variable_rush_larsen(vrel_old, vrel_inf, tau_vrel, self.dt)
+
+        tau_wrel = ops.calc_tau_wrel(u_old)
+        wrel_inf = ops.calc_wrel_inf(u_old)
+        wrel_new = ops.calc_gating_variable_rush_larsen(wrel_old, wrel_inf, tau_wrel, self.dt)
+
+        irel_new = ops.calc_irel(
             urel_old, vrel_old, irel_old, wrel_old,
-            ical, inaca, self.parameters["krel"],
-            carel_old, cai_old, u_old,
-            self.parameters["F"], self.parameters["Vrel"]
+            self.parameters["krel"],
+            carel_old, cai_old
         )
 
         itr = ops.calc_itr(caup_old, carel_old)
@@ -241,6 +299,7 @@ class Courtemanche0D:
         cai_new = cai_old + self.dt * dcai
         carel_new = carel_old + self.dt * dcarel
         u_new = u_old + self.dt * du
+
 
         self.variables["m"] = m_new
         self.variables["h"] = h_new
