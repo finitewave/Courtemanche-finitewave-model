@@ -1,5 +1,5 @@
 """
-ops.py — mathematical core of the model.
+py — mathematical core of the model.
 
 This module provides functions to compute the model equations,
 as well as functions to retrieve default parameters and initial
@@ -168,6 +168,174 @@ def get_parameters() -> dict[str, float]:
         "ibk": 0.0,
     }
 
+
+def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
+               irel, wrel, caup, carel, cai, nai, ki,
+               R, T, F, Cm, Vc, Vj, Vup, Vrel, ko, nao, cao, gna, gk1, gto,
+               gkr, gks, gcal, gcab, gnab, inakmax, inacamax, ipcamax, iupmax,
+               kq10, gamma, kmnai, kmko, kmnancx, kmcancx, ksatncx, krel, kup,
+               caupmax, cmdnmax, trpnmax, csqnmax, kmcmdn, kmtrpn, kmcsqn, ibk,):
+    
+    """Performs a single time step update for the model state variables.
+    
+    Parameters
+    ----------
+    dt : float
+        Time step (ms).
+    u : float
+        Membrane potential (mV).
+    m, h, j : float
+        Gating variables for the fast sodium current.
+    oa, oi : float
+        Gating variables for the transient outward potassium current.
+    ua, ui : float
+        Gating variables for the ultra-rapid delayed rectifier potassium current.
+    xr : float
+        Gating variable for the rapid delayed rectifier potassium current.
+    xs : float
+        Gating variable for the slow delayed rectifier potassium current.
+    d, f : float
+        Gating variable for the L-type calcium current.
+    fca : float
+        Gating variable for the calcium release current.
+    urel, vrel, wrel : float
+        Gating variables for the calcium release current.
+    caup : float
+        Calcium concentration in the sarcoplasmic reticulum.
+    carel : float
+        Calcium concentration in the cytosol.
+    cai : float
+        Intracellular calcium concentration.
+    nai : float
+        Intracellular sodium concentration.
+    ki : float
+        Intracellular potassium concentration.
+    """
+
+    ena = calc_ena(nai, nao, R, T, F)
+    ek = calc_ek(ki, ko, R, T, F)
+    eca = calc_eca(cai, cao, R, T, F)
+
+    am = calc_am(u)
+    bm = calc_bm(u)
+    tau_m = calc_tau(am, bm)
+    m_inf = calc_inf(am, bm)
+    m_new = calc_gating_variable_rush_larsen(m, m_inf, tau_m, dt)
+
+    ah = calc_ah(u)
+    bh = calc_bh(u) 
+    tau_h = calc_tau(ah, bh)
+    h_inf = calc_inf(ah, bh)
+    h_new = calc_gating_variable_rush_larsen(h, h_inf, tau_h, dt)
+
+    aj = calc_aj(u)
+    bj = calc_bj(u)
+    tau_j = calc_tau(aj, bj)
+    j_inf = calc_inf(aj, bj)
+    j_new = calc_gating_variable_rush_larsen(j, j_inf, tau_j, dt)
+
+    ina = calc_ina(u, m, h, j, gna, ena, Cm)
+
+    ik1 = calc_ik1(u, gk1, ek, Cm)
+
+    tau_oa = calc_tau_oa(u, kq10)
+    oa_inf = calc_oa_inf(u)
+    oa_new = calc_gating_variable_rush_larsen(oa, oa_inf, tau_oa, dt)
+
+    tau_oi = calc_tau_oi(u, kq10)
+    oi_inf = calc_oi_inf(u)
+    oi_new = calc_gating_variable_rush_larsen(oi, oi_inf, tau_oi, dt)
+
+    ito = calc_ito(u, oa, oi, gto, ek, Cm)
+
+    tau_ua = calc_tau_ua(u, kq10)
+    ua_inf = calc_ua_inf(u)
+    ua_new = calc_gating_variable_rush_larsen(ua, ua_inf, tau_ua, dt)
+
+    tau_ui = calc_tau_ui(u, kq10)
+    ui_inf = calc_ui_inf(u)
+    ui_new = calc_gating_variable_rush_larsen(ui, ui_inf, tau_ui, dt)
+
+    ikur = calc_ikur(u, ua, ui, ek, Cm)
+
+    tau_xr = calc_tau_xr(u)
+    xr_inf = calc_xr_inf(u)
+    xr_new = calc_gating_variable_rush_larsen(xr, xr_inf, tau_xr, dt)
+
+    ikr = calc_ikr(u, xr, gkr, ek, Cm)
+
+    tau_xs = calc_tau_xs(u)
+    xs_inf = calc_xs_inf(u)
+    xs_new = calc_gating_variable_rush_larsen(xs, xs_inf, tau_xs, dt)
+
+    iks = calc_iks(u, xs, gks, ek, Cm)
+
+    tau_d = calc_tau_d(u)
+    d_inf = calc_d_inf(u)
+    d_new = calc_gating_variable_rush_larsen(d, d_inf, tau_d, dt)
+
+    tau_f = calc_tau_f(u)
+    f_inf = calc_f_inf(u)
+    f_new = calc_gating_variable_rush_larsen(f, f_inf, tau_f, dt)
+
+    tau_fca = calc_tau_fca()
+    fca_inf = calc_fca_inf(cai)
+    fca_new = calc_gating_variable_rush_larsen(fca, fca_inf, tau_fca, dt)
+
+    ical = calc_ical(u, d, f, gcal, fca, Cm)
+
+    inak = calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm)
+
+    inaca = calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, Cm)
+
+    ibca = calc_ibca(gcab, eca, u, Cm)
+
+    ibna = calc_ibna(gnab, ena, u, Cm)
+
+    ipca = calc_ipca(ipcamax, cai, Cm)
+
+    Fn = calc_Fn(irel, ical, inaca, F, Vrel)
+
+    tau_urel = calc_tau_urel()
+    urel_inf = calc_urel_inf(Fn)
+    urel_new = calc_gating_variable_rush_larsen(urel, urel_inf, tau_urel, dt)
+
+    tau_vrel = calc_tau_vrel(Fn)
+    vrel_inf = calc_vrel_inf(Fn)
+    vrel_new = calc_gating_variable_rush_larsen(vrel, vrel_inf, tau_vrel, dt)
+
+    tau_wrel = calc_tau_wrel(u)
+    wrel_inf = calc_wrel_inf(u)
+    wrel_new = calc_gating_variable_rush_larsen(wrel, wrel_inf, tau_wrel, dt)
+
+    irel_new = calc_irel(urel, vrel, irel, wrel, krel, carel, cai)
+
+    itr = calc_itr(caup, carel)
+    iup = calc_iup(iupmax, cai, kup)
+    iupleak = calc_iupleak(caup, caupmax, iupmax)
+
+    dcaup = calc_dcaup(iup, iupleak, itr, Vrel, Vup)
+
+    dnai = calc_dnai(inak, inaca, ibna, ina, F, Vj)
+
+    dki = calc_dki(inak, ik1, ito, ikur, ikr, iks, ibk, F, Vj)
+
+    dcai = calc_dcai(cai, inaca, ipca, ical, ibca, iup, iupleak, irel, Vrel, Vup,
+                     trpnmax, kmtrpn, cmdnmax, kmcmdn, F, Vj)
+
+    dcarel = calc_dcarel(carel, itr, irel, csqnmax, kmcsqn)
+
+    rhs = - calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca, Cm)
+
+    caup_new = caup + dt * dcaup
+    nai_new = nai + dt * dnai
+    ki_new = ki + dt * dki
+    cai_new = cai + dt * dcai
+    carel_new = carel + dt * dcarel
+
+    return (rhs, m_new, h_new, j_new, oa_new, oi_new, ua_new, ui_new, xr_new, xs_new,
+            d_new, f_new, fca_new, urel_new, vrel_new, irel_new, wrel_new,
+            caup_new, carel_new, cai_new, nai_new, ki_new)
 
 
 def calc_rhs(ina, ik1, ito, ikur, ikr, iks, ical, ipca, inak, inaca, ibna, ibca, Cm):
