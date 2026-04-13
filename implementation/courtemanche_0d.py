@@ -71,7 +71,7 @@ class Courtemanche0D:
         self.variables = ops.get_variables()
         self.parameters = ops.get_parameters()
         self.history = {s: [] for s in self.variables}
-        self.stim_curr_history = []
+        self.stim_history = []
 
     def step(self, i: int):
         """
@@ -136,7 +136,7 @@ class Courtemanche0D:
 
         
         stim_curr = self.dt * sum(stim.stim(t=self.dt*i) for stim in self.stimulations)
-        self.stim_curr_history.append(stim_curr)
+        self.stim_history.append(stim_curr)
 
         self.variables["u"] += self.dt * rhs + stim_curr  
 
