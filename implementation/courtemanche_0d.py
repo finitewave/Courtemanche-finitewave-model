@@ -82,56 +82,10 @@ class Courtemanche0D:
         i : int
             Current time step index.
         """
-        u_old = self.variables["u"]
-        m_old = self.variables["m"]
-        h_old = self.variables["h"]
-        j_old = self.variables["j"]
 
-        oa_old = self.variables["oa"]
-        oi_old = self.variables["oi"]
-        ua_old = self.variables["ua"]
-        ui_old = self.variables["ui"]
-        xr_old = self.variables["xr"]
-        xs_old = self.variables["xs"]
-
-        d_old = self.variables["d"]
-        f_old = self.variables["f"]
-        fca_old = self.variables["fca"]
-
-        urel_old = self.variables["urel"]
-        vrel_old = self.variables["vrel"]
-        irel_old = self.variables["irel"]
-        wrel_old = self.variables["wrel"]
-
-        caup_old = self.variables["caup"]
-        carel_old = self.variables["carel"]
-        cai_old = self.variables["cai"]
-        nai_old = self.variables["nai"]
-        ki_old = self.variables["ki"]
-
-        res = ops.ionic_step(
-            self.dt, u_old, m_old, h_old, j_old,
-            oa_old, oi_old, ua_old, ui_old, xr_old, xs_old,
-            d_old, f_old, fca_old,
-            urel_old, vrel_old, irel_old, wrel_old,
-            caup_old, carel_old, cai_old, nai_old, ki_old,
-            self.parameters["R"], self.parameters["T"], self.parameters["F"],
-            self.parameters["Cm"], self.parameters["Vc"], self.parameters["Vj"],
-            self.parameters["Vup"], self.parameters["Vrel"],
-            self.parameters["ko"], self.parameters["nao"], self.parameters["cao"],
-            self.parameters["gna"], self.parameters["gk1"], self.parameters["gto"],
-            self.parameters["gkr"], self.parameters["gks"], self.parameters["gcal"],
-            self.parameters["gcab"], self.parameters["gnab"],
-            self.parameters["inakmax"], self.parameters["inacamax"], self.parameters["ipcamax"],
-            self.parameters["iupmax"], self.parameters["kq10"], self.parameters["gamma"],
-            self.parameters["kmnai"], self.parameters["kmko"], self.parameters["kmnancx"],
-            self.parameters["kmcancx"], self.parameters["ksatncx"], self.parameters["krel"],
-            self.parameters["kup"], self.parameters["caupmax"], self.parameters["cmdnmax"],
-            self.parameters["trpnmax"], self.parameters["csqnmax"], self.parameters["kmcmdn"],
-            self.parameters["kmtrpn"], self.parameters["kmcsqn"], self.parameters["ibk"],
-        )
+        res = ops.ionic_step(self.dt, **self.variables, **self.parameters)
         (rhs, m_new, h_new, j_new, oa_new, oi_new, ua_new, ui_new, xr_new, xs_new,
-         d_new, f_new, fca_new, urel_new, vrel_new, irel_new, wrel_new,
+         d_new, f_new, fca_new, urel_new, vrel_new, wrel_new,
          caup_new, carel_new, cai_new, nai_new, ki_new) = res
 
         
@@ -157,7 +111,6 @@ class Courtemanche0D:
 
         self.variables["urel"] = urel_new
         self.variables["vrel"] = vrel_new
-        self.variables["irel"] = irel_new
         self.variables["wrel"] = wrel_new
 
         self.variables["caup"] = caup_new
