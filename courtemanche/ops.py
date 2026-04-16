@@ -115,7 +115,7 @@ def get_variables() -> dict[str, float]:
         "oa": 0.0304,
         "ua": 0.00496,
         "fca": 0.775,
-        "irel": 0.0,
+        # "irel": 0.0,
         "urel": 0.0,
         "wrel": 0.999,
     }
@@ -170,7 +170,7 @@ def get_parameters() -> dict[str, float]:
 
 
 def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
-               irel, wrel, caup, carel, cai, nai, ki,
+               wrel, caup, carel, cai, nai, ki,
                R, T, F, Cm, Vc, Vj, Vup, Vrel, ko, nao, cao, gna, gk1, gto,
                gkr, gks, gcal, gcab, gnab, inakmax, inacamax, ipcamax, iupmax,
                kq10, gamma, kmnai, kmko, kmnancx, kmcancx, ksatncx, krel, kup,
@@ -294,6 +294,8 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
 
     ipca = calc_ipca(ipcamax, cai, Cm)
 
+    irel = calc_irel(urel, vrel, wrel, krel, carel, cai)
+
     Fn = calc_Fn(irel, ical, inaca, F, Vrel)
 
     tau_urel = calc_tau_urel()
@@ -308,7 +310,6 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     wrel_inf = calc_wrel_inf(u)
     wrel_new = calc_gating_variable_rush_larsen(wrel, wrel_inf, tau_wrel, dt)
 
-    irel_new = calc_irel(urel, vrel, irel, wrel, krel, carel, cai)
 
     itr = calc_itr(caup, carel)
     iup = calc_iup(iupmax, cai, kup)
@@ -334,7 +335,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     carel_new = carel + dt * dcarel
 
     return (rhs, m_new, h_new, j_new, oa_new, oi_new, ua_new, ui_new, xr_new, xs_new,
-            d_new, f_new, fca_new, urel_new, vrel_new, irel_new, wrel_new,
+            d_new, f_new, fca_new, urel_new, vrel_new, wrel_new,
             caup_new, carel_new, cai_new, nai_new, ki_new)
 
 
@@ -762,7 +763,7 @@ def calc_ah(u):
         Membrane potential.
     """
 
-    ah = calc_where(u >= -40, 0, 0.135*exp(-(80 + u)/6.8))
+    ah = calc_where(u >= -40, 0, 0.135 * exp(-(80 + u)/6.8))
     return ah
 
 
@@ -776,7 +777,9 @@ def calc_bh(u):
         Membrane potential.
     """
 
-    bh = calc_where(u >= -40, 1/(0.13*(1 + exp(-(u + 10.66)/11.1))), 3.56*exp(0.079*u) + 310000*exp(0.35*u)) 
+    bh = calc_where(u >= -40,
+                    1 / (0.13 * (1 + exp(-(u + 10.66) / 11.1))),
+                    3.56 * exp(0.079 * u) + 310000 * exp(0.35 * u)) 
     return bh
 
 
@@ -791,7 +794,8 @@ def calc_aj(u):
     """
 
     aj = calc_where(u >= -40, 0, 
-               (-127140*exp(0.2444*u) - 0.00003474*exp(-0.04391*u))*(u + 37.78)/(1 + exp(0.311*(u + 79.23))))
+                    ((-127140 * exp(0.2444 * u) - 0.00003474 * exp(-0.04391 * u)) * 
+                     (u + 37.78)/(1 + exp(0.311*(u + 79.23)))))
     return aj
 
 
@@ -805,7 +809,9 @@ def calc_bj(u):
         Membrane potential.
     """
 
-    bj = calc_where(u >= -40, 0.3*exp(-0.0000002535*u)/(1 + exp(-0.1*(u + 32))), 0.1212*exp(-0.01052*u)/(1 + exp(-0.1378*(u + 40.14))))
+    bj = calc_where(u >= -40,
+                    0.3 * exp(-0.0000002535 * u)/(1 + exp(-0.1 * (u + 32))),
+                    0.1212 * exp(-0.01052 * u)/(1 + exp(-0.1378 * (u + 40.14))))
     return bj
 
 
@@ -1116,7 +1122,9 @@ def calc_tau_d(u):
         Membrane potential.
     """
 
-    tau_d = (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24)))
+    tau_d = calc_where(abs(u + 10) < 1e-5,
+                       2.289377 * (1.0 - 0.00214 * (u + 10)**2),
+                       (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
     return tau_d
 
 
@@ -1304,7 +1312,8 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
     denominator = term1 * term2 * term3
 
     # Calculate INaCa
-    inaca = Cm *  numerator / denominator
+    inaca = Cm * numerator / denominator
+    # inaca = numerator / denominator
 
     return inaca
 
@@ -1384,7 +1393,7 @@ def calc_Fn(irel, ical, inaca, F, Vrel):
         Volume of the release compartment.
     """
 
-    Fn = 1e-12*Vrel*irel - ((5*1e-13)/F)*(0.5*ical - 0.2*inaca) 
+    Fn = 1e-12 * Vrel * irel - ((5 * 1e-13) / F) * (0.5 * ical - 0.2 * inaca)
     return Fn
 
 
@@ -1417,7 +1426,6 @@ def calc_urel_inf(Fn):
     """
 
     urel_inf = 1/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
-
     return urel_inf
 
 
@@ -1432,7 +1440,6 @@ def calc_tau_vrel(Fn):
     """
 
     tau_vrel = 1.91 + 2.09/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
-
     return tau_vrel
 
 
@@ -1447,7 +1454,6 @@ def calc_vrel_inf(Fn):
     """
 
     vrel_inf = 1 - 1/(1 + exp(-(Fn - 6.835e-14)/13.67e-16))
-
     return vrel_inf
 
 
@@ -1479,7 +1485,7 @@ def calc_wrel_inf(u):
     return wrel_inf
 
 
-def calc_irel(urel, vrel, irel, wrel, krel, carel, cai): 
+def calc_irel(urel, vrel, wrel, krel, carel, cai): 
     """
     Calculates the calcium release from the JSR.
 
@@ -1501,7 +1507,7 @@ def calc_irel(urel, vrel, irel, wrel, krel, carel, cai):
         Intracellular calcium concentration.
     """
 
-    irel = krel*(urel**2)*vrel*wrel*(carel - cai)
+    irel = krel * (urel**2) * vrel * wrel * (carel - cai)
 
     return irel 
 
