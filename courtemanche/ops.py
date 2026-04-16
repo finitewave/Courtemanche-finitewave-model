@@ -947,8 +947,10 @@ def calc_tau_d(u):
     u : float
         Membrane potential.
     """
-
-    tau_d = (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24)))
+    # Taylor expansion around u = -10 to avoid numerical instability
+    tau_d = calc_where(abs(u + 10) < 1e-5,
+                       2.289377 * (1.0 - 0.00214 * (u + 10)**2),
+                       (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
     return tau_d
 
 
