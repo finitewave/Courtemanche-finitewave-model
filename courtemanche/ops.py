@@ -702,9 +702,16 @@ def calc_am(u):
     ----------
     u : float
         Membrane potential.
+
+    Note
+    ----
+        The singularity at u = -47.13 mV is handled using
+        lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    am = calc_where(u == -47.13, 3.2, 0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13))))
+    am = calc_where(abs(u + 47.13) < 1e-5,
+                    0.32 * 10,
+                    0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13))))
     return am
 
 
@@ -718,7 +725,7 @@ def calc_bm(u):
         Membrane potential.
     """
 
-    bm = 0.08*exp(-u/11)
+    bm = 0.08 * exp(-u / 11)
     return bm
 
 def calc_tau(a, b):
@@ -1024,10 +1031,19 @@ def calc_tau_xr(u):
     ----------
     u : float
         Membrane potential.
+    
+    Note
+    ----
+        The singularities at u = -14.1 and u = 3.3328 are handled using
+        lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    axr = 0.0003*(u + 14.1)/(1 - exp(-(u + 14.1)/5))
-    bxr = 0.000073898*(u - 3.3328)/(exp((u - 3.3328)/5.1237) - 1)
+    axr = calc_where(abs(u + 14.1) < 1e-5,
+                     0.0003 * 5,
+                     0.0003 * (u + 14.1) / (1 - exp(-(u + 14.1) / 5)))
+    bxr = calc_where(abs(u - 3.3328) < 1e-5,
+                     0.000073898 * 5.1237,
+                     0.000073898 * (u - 3.3328) / (exp((u - 3.3328) / 5.1237) - 1))
 
     tau_xr = 1/(axr + bxr)
     return tau_xr
@@ -1079,10 +1095,19 @@ def calc_tau_xs(u):
     ----------
     u : float
         Membrane potential.
+    
+    Note
+    ----
+        The singularity at u = 19.9 mV is handled using
+        lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    axs = 0.00004*(u - 19.9)/(1 - exp(-(u - 19.9)/17))
-    bxs = 0.000035*(u - 19.9)/(exp((u - 19.9)/9) - 1)
+    axs = calc_where(abs(u - 19.9) < 1e-5,
+                     0.00004 * 17,
+                     0.00004 * (u - 19.9) / (1 - exp(-(u - 19.9)/17)))
+    bxs = calc_where(abs(u - 19.9) < 1e-5, 
+                     0.000035 * 9,
+                     0.000035 * (u - 19.9) / (exp((u - 19.9)/9) - 1))
 
     tau_xs = 1/(2*(axs + bxs))
     return tau_xs
@@ -1098,7 +1123,7 @@ def calc_xs_inf(u):
         Membrane potential.
     """
 
-    xs_inf = 1/sqrt(1 + exp(-(u - 19.9)/12.7))
+    xs_inf = 1 / sqrt(1 + exp(-(u - 19.9)/12.7))
     return xs_inf
 
 
@@ -1120,11 +1145,16 @@ def calc_tau_d(u):
     ----------
     u : float
         Membrane potential.
+
+    Note
+    ----
+        The singularity at u = -10 mV is handled using Taylor expansion of
+        (exp(x) - 1) / (exp(x) + 1) = tanh(x/2) around x = 0.
     """
 
     tau_d = calc_where(abs(u + 10) < 1e-5,
-                       2.289377 * (1.0 - 0.00214 * (u + 10)**2),
-                       (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
+                       1 / (6.24 * 0.035) * (1. / 2. - 1. / 24. * ((u + 10) / 6.24) ** 2),
+                       (1 - exp(-(u + 10) / 6.24)) / (0.035 *(u + 10)*(1 + exp(-(u + 10)/6.24))))
     return tau_d
 
 
