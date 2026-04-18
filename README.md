@@ -14,7 +14,7 @@ DOI: 10.1152/ajpheart.1998.275.1.H301
 python -m examples.courtemanche_example
 ```
 
-![Alt text](ten_tusscher_panfilov_2006_ap.png)
+![Alt text](courtemanche_ap.png)
 
 ### How to test
 ```bash
