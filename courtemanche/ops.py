@@ -1151,10 +1151,10 @@ def calc_tau_d(u):
         The singularity at u = -10 mV is handled using Taylor expansion of
         (exp(x) - 1) / (exp(x) + 1) = tanh(x/2) around x = 0.
     """
-
+    # Taylor expansion around u = -10 to avoid numerical instability
     tau_d = calc_where(abs(u + 10) < 1e-5,
-                       1 / (6.24 * 0.035) * (1. / 2. - 1. / 24. * ((u + 10) / 6.24) ** 2),
-                       (1 - exp(-(u + 10) / 6.24)) / (0.035 *(u + 10)*(1 + exp(-(u + 10)/6.24))))
+                       2.289377 * (1.0 - 0.00214 * (u + 10)**2),
+                       (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
     return tau_d
 
 
