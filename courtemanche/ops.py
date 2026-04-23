@@ -19,8 +19,10 @@ DOI: 10.1152/ajpheart.1998.275.1.H301
 """
 
 __all__ = (
+    "get_diffusion_coefficient",
     "get_variables",
     "get_parameters",
+    "ionic_step",
     "calc_rhs",  
     "calc_where",
     "calc_gating_variable",
@@ -91,6 +93,12 @@ __all__ = (
 from math import exp, log, sqrt 
 
 
+def get_diffusion_coefficient() -> float:
+    """
+    Returns the diffusion coefficient for spatial propagation in the model.
+    """
+    return {"D_model": 0.154}
+
 def get_variables() -> dict[str, float]:
     """
     Returns default initial values for state variables.
@@ -141,6 +149,7 @@ def get_parameters() -> dict[str, float]:
         "gk1": 0.09,
         "gto": 0.1652,
         "gkr": 0.0294,
+        "gkur": 1.0,
         "gks": 0.129,
         "gcal": 0.1238,
         "gcab": 0.00113,
@@ -172,7 +181,7 @@ def get_parameters() -> dict[str, float]:
 def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
                wrel, caup, carel, cai, nai, ki,
                R, T, F, Cm, Vc, Vj, Vup, Vrel, ko, nao, cao, gna, gk1, gto,
-               gkr, gks, gcal, gcab, gnab, inakmax, inacamax, ipcamax, iupmax,
+               gkr, gkur, gks, gcal, gcab, gnab, inakmax, inacamax, ipcamax, iupmax,
                kq10, gamma, kmnai, kmko, kmnancx, kmcancx, ksatncx, krel, kup,
                caupmax, cmdnmax, trpnmax, csqnmax, kmcmdn, kmtrpn, kmcsqn, ibk,):
     
@@ -256,7 +265,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     ui_inf = calc_ui_inf(u)
     ui_new = calc_gating_variable_rush_larsen(ui, ui_inf, tau_ui, dt)
 
-    ikur = calc_ikur(u, ua, ui, ek, Cm)
+    ikur = calc_ikur(u, ua, ui, ek, Cm, gkur)
 
     tau_xr = calc_tau_xr(u)
     xr_inf = calc_xr_inf(u)
@@ -999,7 +1008,7 @@ def calc_ui_inf(u):
     return ui_inf
 
 
-def calc_ikur(u, ua, ui, ek, Cm):
+def calc_ikur(u, ua, ui, ek, Cm, gkur):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
 
@@ -1015,9 +1024,11 @@ def calc_ikur(u, ua, ui, ek, Cm):
         Equilibrium potential for potassium.
     Cm : float
         Cell membrane capacitance.
+    gkur : float
+        Maximum conductance for the ultra-rapid delayed rectifier potassium current.
     """
 
-    gkur = 0.005 + 0.05/(1 + exp(-(u - 15)/13.0))
+    gkur = gkur * (0.005 + 0.05/(1 + exp(-(u - 15)/13.0)))
 
     ikur = Cm * gkur*(ua**3)*ui*(u - ek)
 
