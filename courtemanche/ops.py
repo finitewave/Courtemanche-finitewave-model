@@ -1091,9 +1091,8 @@ def calc_ikr(u, xr, gkr, ek, Cm):
     Cm : float
         Cell membrane capacitance.
     """
-    gkr = 0.0294 # * sqrt(ko / 5.4)
 
-    ikr = Cm * (gkr*xr*(u - ek))/(1 + exp((u + 15)/22.4))
+    ikr = Cm * (gkr * xr * (u - ek))/(1 + exp((u + 15)/22.4))
 
     return ikr
 
