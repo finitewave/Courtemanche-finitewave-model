@@ -22,6 +22,7 @@ __all__ = (
     "get_diffusion_coefficient",
     "get_variables",
     "get_parameters",
+    "ionic_step",
     "calc_rhs",  
     "calc_where",
     "calc_gating_variable",
