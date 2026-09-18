@@ -19,6 +19,7 @@ DOI: 10.1152/ajpheart.1998.275.1.H301
 """
 
 __all__ = (
+    "get_diffusion_coefficient",
     "get_variables",
     "get_parameters",
     "calc_rhs",  
@@ -89,6 +90,12 @@ __all__ = (
 )
 
 from math import exp, log, sqrt 
+
+def get_diffusion_coefficient() -> float:
+    """
+    Returns the diffusion coefficient for spatial propagation in the model.
+    """
+    return {"D_model": 0.154}
 
 
 def get_variables() -> dict[str, float]:
