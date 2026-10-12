@@ -87,7 +87,7 @@ __all__ = (
     "calc_itr",
     "calc_iup",
     "calc_iupleak",
-    
+    "calc_sigmoid",
 )
 
 from math import exp, log, sqrt 
@@ -270,7 +270,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     xr_inf = calc_xr_inf(u)
     xr_new = calc_gating_variable_rush_larsen(xr, xr_inf, tau_xr, dt)
 
-    ikr = calc_ikr(u, xr, gkr, ek, Cm)
+    ikr = calc_ikr(u, xr, gkr, ek, ko, Cm)
 
     tau_xs = calc_tau_xs(u)
     xs_inf = calc_xs_inf(u)
@@ -294,7 +294,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
 
     inak = calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm)
 
-    inaca = calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, Cm)
+    inaca = calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, gamma, Cm)
 
     ibca = calc_ibca(gcab, eca, u, Cm)
 
@@ -307,6 +307,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     Fn = calc_Fn(irel, ical, inaca, F, Vrel)
 
     tau_urel = calc_tau_urel()
+    
     urel_inf = calc_urel_inf(Fn)
     urel_new = calc_gating_variable_rush_larsen(urel, urel_inf, tau_urel, dt)
 
@@ -1088,7 +1089,7 @@ def calc_xr_inf(u):
     return xr_inf
 
 
-def calc_ikr(u, xr, gkr, ek, Cm):
+def calc_ikr(u, xr, gkr, ek, ko, Cm):
     """
     Calculates the rapid delayed rectifier potassium current.
 
@@ -1105,9 +1106,7 @@ def calc_ikr(u, xr, gkr, ek, Cm):
     Cm : float
         Cell membrane capacitance.
     """
-    gkr = 0.0294 # * sqrt(ko / 5.4)
-
-    ikr = Cm * (gkr*xr*(u - ek))/(1 + exp((u + 15)/22.4))
+    ikr = Cm * gkr * sqrt(ko / 5.4) * xr * (u - ek)/(1 + exp((u + 15)/22.4))
 
     return ikr
 
@@ -1191,12 +1190,11 @@ def calc_tau_d(u):
     z = (u + 10.0) / 6.24
     near_zero = abs(z) < 1e-2
     safe_z = calc_where(near_zero, 1.0, z)
-    e = exp(-z)
     # tanh(z/2) / z = 1/2 - z**2/24 + z**4/240 + O(z**6).
     tau_d = calc_where(
         near_zero,
         0.5 - z * z / 24.0 + z**4 / 240.0,
-        (1.0 - e) / (safe_z * (1.0 + e)),
+        (1.0 - exp(-z)) / (safe_z * (1.0 + exp(-z))),
     ) / (0.035 * 6.24)
     return tau_d
 
@@ -1334,7 +1332,7 @@ def calc_inak(inakmax, nai, nao, ko, kmnai, kmko, F, u, R, T, Cm):
     return inak
 
 
-def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, Cm):
+def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R, T, gamma, Cm):
     """
     Calculates the sodium-calcium exchanger current.
 
@@ -1364,12 +1362,11 @@ def calc_inaca(inacamax, nai, nao, cai, cao, kmnancx, kmcancx, ksatncx, F, u, R,
         Universal gas constant.
     T : float
         Absolute temperature.
+    gamma : float
+        Voltage dependence factor for the sodium-calcium exchanger.
     Cm : float
         Cell membrane capacitance.
     """
-
-    gamma = 0.35
-
     # Exponential terms with clamping
     exp_term = exp(gamma * (F * u) / (R * T))
     exp_rev_term = exp((gamma - 1) * (F * u) / (R * T))
@@ -1497,9 +1494,8 @@ def calc_urel_inf(Fn):
     Vrel : float
         Volume of the release compartment.
     """
-
-    urel_inf = 1/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
-    return urel_inf
+    z = (Fn - 3.4175e-13) / 13.67e-16
+    return calc_sigmoid(z)
 
 
 def calc_tau_vrel(Fn):
@@ -1511,8 +1507,8 @@ def calc_tau_vrel(Fn):
     Fn : float
         Function Fn used in the gating variable equations.
     """
-
-    tau_vrel = 1.91 + 2.09/(1 + exp(-(Fn - 3.4175e-13)/13.67e-16))
+    z = (Fn - 3.4175e-13) / 13.67e-16
+    tau_vrel = 1.91 + 2.09 * calc_sigmoid(z)
     return tau_vrel
 
 
@@ -1525,8 +1521,8 @@ def calc_vrel_inf(Fn):
     Fn : float
         Function Fn used in the gating variable equations.
     """
-
-    vrel_inf = 1 - 1/(1 + exp(-(Fn - 6.835e-14)/13.67e-16))
+    z = (Fn - 6.835e-14) / 13.67e-16
+    vrel_inf = calc_sigmoid(-z)
     return vrel_inf
 
 
@@ -1626,7 +1622,7 @@ def calc_iup(iupmax, cai, kup):
         Dissociation constant for the uptake.
     """
 
-    iup = iupmax/(1 + (kup/cai))
+    iup = iupmax * cai / (cai + kup)
     return iup
 
 
@@ -1646,3 +1642,17 @@ def calc_iupleak(caup, caupmax, iupmax):
 
     iupleak = (caup/caupmax)*iupmax
     return iupleak
+
+
+def calc_sigmoid(z):
+    """
+    Calculates the safe sigmoid function for a given input z.
+
+    Parameters
+    ----------
+    z : float
+        Input value.
+    """
+    exp_term = exp(-abs(z))
+    sigmoid = calc_where(z >= 0, 1 / (1 + exp_term), exp_term / (1 + exp_term))
+    return sigmoid

@@ -22,11 +22,12 @@ model.run(t_max=t_max)
 time = np.arange(0, t_max, model.dt)
 
 fig = plt.figure()
-plt.plot(time, model.history['u'], lw=2)
+plt.plot(time, model.history['u'], lw=2, label='Membrane Potential')
 plt.xlabel('Time (s)')
 plt.ylabel('Membrane Potential (u)')
 plt.title('0D Courtemanche Simulation')
 plt.grid(which='major')
+plt.legend()
 plt.show()
 
 # fig.savefig("courtemanche_ap.png", dpi=300)

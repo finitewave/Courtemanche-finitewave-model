@@ -89,10 +89,10 @@ class Courtemanche0D:
          caup_new, carel_new, cai_new, nai_new, ki_new) = res
 
         
-        stim_curr = self.dt * sum(stim.stim(t=self.dt*i) for stim in self.stimulations)
-        self.stim_history.append(stim_curr)
+        stim_curr = sum(stim.stim(t=self.dt*i) for stim in self.stimulations)
+        self.stim_history.append(self.dt * stim_curr)
 
-        self.variables["u"] += self.dt * rhs + stim_curr  
+        self.variables["u"] += self.dt * (rhs + stim_curr)
 
         self.variables["m"] = m_new
         self.variables["h"] = h_new
