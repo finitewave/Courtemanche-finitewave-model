@@ -714,12 +714,18 @@ def calc_am(u):
     Note
     ----
         The singularity at u = -47.13 mV is handled using
-        lim x->0 : x / (1 - exp(x)) = -1
+        a Taylor expansion with a safe denominator near zero
     """
 
-    am = calc_where(abs(u + 47.13) < 1e-5,
-                    0.32 * 10,
-                    0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13))))
+    z = 0.1 * (u + 47.13)
+    near_zero = abs(z) < 1e-2
+    # z / (1 - exp(-z)) = 1 + z/2 + z**2/12 + O(z**4).
+    safe_den = calc_where(near_zero, 1.0, 1.0 - exp(-z))
+    am = 3.2 * calc_where(
+        near_zero,
+        1.0 + 0.5 * z + z * z / 12.0,
+        z / safe_den,
+    )
     return am
 
 
@@ -1043,17 +1049,28 @@ def calc_tau_xr(u):
     Note
     ----
         The singularities at u = -14.1 and u = 3.3328 are handled using
-        lim x->0 : x / (1 - exp(x)) = -1
+        a Taylor expansion with a safe denominator near zero
     """
 
-    axr = calc_where(abs(u + 14.1) < 1e-5,
-                     0.0003 * 5,
-                     0.0003 * (u + 14.1) / (1 - exp(-(u + 14.1) / 5)))
-    bxr = calc_where(abs(u - 3.3328) < 1e-5,
-                     0.000073898 * 5.1237,
-                     0.000073898 * (u - 3.3328) / (exp((u - 3.3328) / 5.1237) - 1))
+    za = (u + 14.1) / 5.0
+    near_a = abs(za) < 1e-2
+    safe_a = calc_where(near_a, 1.0, 1.0 - exp(-za))
+    axr = 0.0003 * 5.0 * calc_where(
+        near_a,
+        1.0 + 0.5 * za + za * za / 12.0,
+        za / safe_a,
+    )
 
-    tau_xr = 1/(axr + bxr)
+    zb = (u - 3.3328) / 5.1237
+    near_b = abs(zb) < 1e-2
+    safe_b = calc_where(near_b, 1.0, exp(zb) - 1.0)
+    bxr = 0.000073898 * 5.1237 * calc_where(
+        near_b,
+        1.0 - 0.5 * zb + zb * zb / 12.0,
+        zb / safe_b,
+    )
+
+    tau_xr = 1 / (axr + bxr)
     return tau_xr
 
 
@@ -1107,17 +1124,28 @@ def calc_tau_xs(u):
     Note
     ----
         The singularity at u = 19.9 mV is handled using
-        lim x->0 : x / (1 - exp(x)) = -1
+        a Taylor expansion with a safe denominator near zero
     """
 
-    axs = calc_where(abs(u - 19.9) < 1e-5,
-                     0.00004 * 17,
-                     0.00004 * (u - 19.9) / (1 - exp(-(u - 19.9)/17)))
-    bxs = calc_where(abs(u - 19.9) < 1e-5, 
-                     0.000035 * 9,
-                     0.000035 * (u - 19.9) / (exp((u - 19.9)/9) - 1))
+    za = (u - 19.9) / 17.0
+    near_a = abs(za) < 1e-2
+    safe_a = calc_where(near_a, 1.0, 1.0 - exp(-za))
+    axs = 0.00004 * 17.0 * calc_where(
+        near_a,
+        1.0 + 0.5 * za + za * za / 12.0,
+        za / safe_a,
+    )
 
-    tau_xs = 1/(2*(axs + bxs))
+    zb = (u - 19.9) / 9.0
+    near_b = abs(zb) < 1e-2
+    safe_b = calc_where(near_b, 1.0, exp(zb) - 1.0)
+    bxs = 0.000035 * 9.0 * calc_where(
+        near_b,
+        1.0 - 0.5 * zb + zb * zb / 12.0,
+        zb / safe_b,
+    )
+
+    tau_xs = 1 / (2 * (axs + bxs))
     return tau_xs
 
 
@@ -1160,9 +1188,16 @@ def calc_tau_d(u):
         (exp(x) - 1) / (exp(x) + 1) = tanh(x/2) around x = 0.
     """
     # Taylor expansion around u = -10 to avoid numerical instability
-    tau_d = calc_where(abs(u + 10) < 1e-5,
-                       2.289377 * (1.0 - 0.00214 * (u + 10)**2),
-                       (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
+    z = (u + 10.0) / 6.24
+    near_zero = abs(z) < 1e-2
+    safe_z = calc_where(near_zero, 1.0, z)
+    e = exp(-z)
+    # tanh(z/2) / z = 1/2 - z**2/24 + z**4/240 + O(z**6).
+    tau_d = calc_where(
+        near_zero,
+        0.5 - z * z / 24.0 + z**4 / 240.0,
+        (1.0 - e) / (safe_z * (1.0 + e)),
+    ) / (0.035 * 6.24)
     return tau_d
 
 
@@ -1505,7 +1540,17 @@ def calc_tau_wrel(u):
         Membrane potential.
     """
 
-    tau_wrel = 6 * (1 - exp(-(u - 7.9) / 5.0)) / ((1 + 0.3 * exp(-(u - 7.9) / 5.0)) * (u - 7.9))
+    z = (u - 7.9) / 5.0
+    near_zero = abs(z) < 1e-2
+    safe_z = calc_where(near_zero, 1.0, z)
+    e = exp(-z)
+    # (1 - exp(-z)) / z = 1 - z/2 + z**2/6 + O(z**3).
+    ratio = calc_where(
+        near_zero,
+        1.0 - 0.5 * z + z * z / 6.0,
+        (1.0 - e) / safe_z,
+    )
+    tau_wrel = (6.0 / 5.0) * ratio / (1.0 + 0.3 * e)
     return tau_wrel
 
 
