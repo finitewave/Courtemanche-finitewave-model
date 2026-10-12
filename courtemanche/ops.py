@@ -718,7 +718,7 @@ def calc_am(u):
         lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    am = calc_where(abs(u + 47.13) < 1e-5,
+    am = calc_where(abs(u + 47.13) < 1e-2,
                     0.32 * 10,
                     0.32 * (u + 47.13) / (1 - exp(-0.1 * (u + 47.13))))
     return am
@@ -1049,10 +1049,10 @@ def calc_tau_xr(u):
         lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    axr = calc_where(abs(u + 14.1) < 1e-5,
+    axr = calc_where(abs(u + 14.1) < 1e-2,
                      0.0003 * 5,
                      0.0003 * (u + 14.1) / (1 - exp(-(u + 14.1) / 5)))
-    bxr = calc_where(abs(u - 3.3328) < 1e-5,
+    bxr = calc_where(abs(u - 3.3328) < 1e-2,
                      0.000073898 * 5.1237,
                      0.000073898 * (u - 3.3328) / (exp((u - 3.3328) / 5.1237) - 1))
 
@@ -1112,10 +1112,10 @@ def calc_tau_xs(u):
         lim x->0 : x / (1 - exp(x)) = -1
     """
 
-    axs = calc_where(abs(u - 19.9) < 1e-5,
+    axs = calc_where(abs(u - 19.9) < 1e-2,
                      0.00004 * 17,
                      0.00004 * (u - 19.9) / (1 - exp(-(u - 19.9)/17)))
-    bxs = calc_where(abs(u - 19.9) < 1e-5, 
+    bxs = calc_where(abs(u - 19.9) < 1e-2, 
                      0.000035 * 9,
                      0.000035 * (u - 19.9) / (exp((u - 19.9)/9) - 1))
 
@@ -1162,7 +1162,7 @@ def calc_tau_d(u):
         (exp(x) - 1) / (exp(x) + 1) = tanh(x/2) around x = 0.
     """
     # Taylor expansion around u = -10 to avoid numerical instability
-    tau_d = calc_where(abs(u + 10) < 1e-5,
+    tau_d = calc_where(abs(u + 10) < 1e-2,
                        2.289377 * (1.0 - 0.00214 * (u + 10)**2),
                        (1 - exp(-(u + 10)/6.24))/(0.035*(u + 10)*(1 + exp(-(u + 10)/6.24))))
     return tau_d
@@ -1506,8 +1506,15 @@ def calc_tau_wrel(u):
     u : float
         Membrane potential.
     """
+    x = u - 7.9
+    near_zero = abs(x) < 1e-2
+    safe_x = calc_where(near_zero, 1.0, x)
 
-    tau_wrel = 6 * (1 - exp(-(u - 7.9) / 5.0)) / ((1 + 0.3 * exp(-(u - 7.9) / 5.0)) * (u - 7.9))
+    tau_wrel = calc_where(
+        near_zero,
+        (12.0 / 13.0) * (1.0 - (7.0 / 130.0) * x),
+        6.0 * (1.0 - exp(-x / 5.0)) / ((1.0 + 0.3 * exp(-x / 5.0)) * safe_x),
+    )
     return tau_wrel
 
 
