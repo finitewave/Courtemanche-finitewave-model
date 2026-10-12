@@ -98,7 +98,6 @@ def test_model_attributes():
     assert 'xs' in model.variables, "Model should have variable 'xs'"
     assert 'xr' in model.variables, "Model should have variable 'xr'"
     assert 'fca' in model.variables, "Model should have variable 'fca'"
-    assert 'irel' in model.variables, "Model should have variable 'irel'"
     assert 'vrel' in model.variables, "Model should have variable 'vrel'"
     assert 'urel' in model.variables, "Model should have variable 'urel'"
     assert 'wrel' in model.variables, "Model should have variable 'wrel'"

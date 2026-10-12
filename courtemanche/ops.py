@@ -92,6 +92,12 @@ __all__ = (
 
 from math import exp, log, sqrt 
 
+def get_diffusion_coefficient() -> float:
+    """
+    Returns the diffusion coefficient for spatial propagation in the model.
+    """
+    return {"D_model": 0.154}
+
 
 def get_diffusion_coefficient() -> float:
     """
