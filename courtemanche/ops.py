@@ -87,7 +87,6 @@ __all__ = (
     "calc_itr",
     "calc_iup",
     "calc_iupleak",
-    "calc_sigmoid",
 )
 
 from math import exp, log, sqrt 
@@ -1495,7 +1494,9 @@ def calc_urel_inf(Fn):
         Volume of the release compartment.
     """
     z = (Fn - 3.4175e-13) / 13.67e-16
-    return calc_sigmoid(z)
+    exp_term = exp(-abs(z))
+    sigmoid = calc_where(z >= 0, 1 / (1 + exp_term), exp_term / (1 + exp_term))
+    return sigmoid
 
 
 def calc_tau_vrel(Fn):
@@ -1508,7 +1509,9 @@ def calc_tau_vrel(Fn):
         Function Fn used in the gating variable equations.
     """
     z = (Fn - 3.4175e-13) / 13.67e-16
-    tau_vrel = 1.91 + 2.09 * calc_sigmoid(z)
+    exp_term = exp(-abs(z))
+    sigmoid = calc_where(z >= 0, 1 / (1 + exp_term), exp_term / (1 + exp_term))
+    tau_vrel = 1.91 + 2.09 * sigmoid
     return tau_vrel
 
 
@@ -1522,8 +1525,9 @@ def calc_vrel_inf(Fn):
         Function Fn used in the gating variable equations.
     """
     z = (Fn - 6.835e-14) / 13.67e-16
-    vrel_inf = calc_sigmoid(-z)
-    return vrel_inf
+    exp_term = exp(-abs(z))
+    sigmoid = calc_where(z >= 0, 1 / (1 + exp_term), exp_term / (1 + exp_term))
+    return sigmoid
 
 
 def calc_tau_wrel(u):
@@ -1642,17 +1646,3 @@ def calc_iupleak(caup, caupmax, iupmax):
 
     iupleak = (caup/caupmax)*iupmax
     return iupleak
-
-
-def calc_sigmoid(z):
-    """
-    Calculates the safe sigmoid function for a given input z.
-
-    Parameters
-    ----------
-    z : float
-        Input value.
-    """
-    exp_term = exp(-abs(z))
-    sigmoid = calc_where(z >= 0, 1 / (1 + exp_term), exp_term / (1 + exp_term))
-    return sigmoid
