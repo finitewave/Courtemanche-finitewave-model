@@ -152,6 +152,7 @@ def get_parameters() -> dict[str, float]:
         "gcal": 0.1238,
         "gcab": 0.00113,
         "gnab": 0.000674,
+        "gkur_scale": 1.0,
         "inakmax": 0.6,
         "inacamax": 1600.0,
         "ipcamax": 0.275,
@@ -179,7 +180,7 @@ def get_parameters() -> dict[str, float]:
 def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
                wrel, caup, carel, cai, nai, ki,
                R, T, F, Cm, Vc, Vj, Vup, Vrel, ko, nao, cao, gna, gk1, gto,
-               gkr, gks, gcal, gcab, gnab, inakmax, inacamax, ipcamax, iupmax,
+               gkr, gks, gcal, gcab, gnab, gkur_scale, inakmax, inacamax, ipcamax, iupmax,
                kq10, gamma, kmnai, kmko, kmnancx, kmcancx, ksatncx, krel, kup,
                caupmax, cmdnmax, trpnmax, csqnmax, kmcmdn, kmtrpn, kmcsqn, ibk,):
     
@@ -263,7 +264,7 @@ def ionic_step(dt, u, m, h, j, oa, oi, ua, ui, xr, xs, d, f, fca, urel, vrel,
     ui_inf = calc_ui_inf(u)
     ui_new = calc_gating_variable_rush_larsen(ui, ui_inf, tau_ui, dt)
 
-    ikur = calc_ikur(u, ua, ui, ek, Cm)
+    ikur = calc_ikur(u, ua, ui, ek, gkur_scale, Cm)
 
     tau_xr = calc_tau_xr(u)
     xr_inf = calc_xr_inf(u)
@@ -1013,7 +1014,7 @@ def calc_ui_inf(u):
     return ui_inf
 
 
-def calc_ikur(u, ua, ui, ek, Cm):
+def calc_ikur(u, ua, ui, ek, gkur_scale, Cm):
     """
     Calculates the ultra-rapid delayed rectifier potassium current.
 
@@ -1027,11 +1028,13 @@ def calc_ikur(u, ua, ui, ek, Cm):
         Gating variable ui.
     ek : float
         Equilibrium potential for potassium.
+    gkur_scale : float
+        Scaling factor for the ultra-rapid delayed rectifier potassium current.
     Cm : float
         Cell membrane capacitance.
     """
 
-    gkur = 0.005 + 0.05/(1 + exp(-(u - 15)/13.0))
+    gkur = gkur_scale * 0.5 * (0.005 + 0.05/(1 + exp(-(u - 15)/13.0)))
 
     ikur = Cm * gkur*(ua**3)*ui*(u - ek)
 
